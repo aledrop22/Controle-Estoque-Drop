@@ -1,0 +1,5 @@
+{
+  "name": "Estoque & Vendas Inteligente",
+  "description": "Dashboard de análise de estoque e vendas diárias com insights de IA baseados em snapshots diários.",
+  "requestFramePermissions": []
+}
