@@ -325,9 +325,7 @@ const App: React.FC = () => {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Controle de Estoque</h1>
           {!autoLoaded && (
-            isLoadingInventory ? (
-              <p className="font-semibold text-indigo-600">Carregando inventário da planilha...</p>
-            ) : autoLoadError ? (
+            autoLoadError && !isLoadingInventory ? (
               <p className="font-semibold text-yellow-600">Exibindo dados de demonstração (API indisponível)</p>
             ) : (
               <p className="font-semibold text-indigo-600">Carregando inventário da planilha...</p>
