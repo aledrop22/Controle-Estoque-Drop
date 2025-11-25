@@ -75,7 +75,7 @@ function mapRowsToProducts(rows, dateFilter) {
     Object.keys(productHistory).forEach(key => {
         const hist = productHistory[key];
         hist.rows.sort((a, b) => a.date.localeCompare(b.date));
-        
+
         // Calcula vendas entre dias consecutivos
         for (let i = 1; i < hist.rows.length; i++) {
             const prev = hist.rows[i - 1];
@@ -233,6 +233,34 @@ app.get('/api/inventory/raw', async (req, res) => {
 
 app.get('/api/health', (_req, res) => {
     res.json({ ok: true, pid: process.pid });
+});
+
+// Endpoint para reiniciar os servidores
+app.post('/api/restart', (_req, res) => {
+    try {
+        const { spawn } = require('child_process');
+        const path = require('path');
+
+        // Executa o script start.ps1 em segundo plano
+        const scriptPath = path.join(__dirname, '..', 'start.ps1');
+        const child = spawn('powershell.exe', ['-ExecutionPolicy', 'Bypass', '-File', scriptPath], {
+            detached: true,
+            stdio: 'ignore',
+            cwd: path.join(__dirname, '..')
+        });
+
+        child.unref();
+
+        res.json({ ok: true, message: 'Servidores sendo reiniciados...' });
+
+        // Aguarda um pouco antes de encerrar este processo
+        setTimeout(() => {
+            process.exit(0);
+        }, 1000);
+    } catch (e) {
+        console.error('Erro ao reiniciar:', e);
+        res.status(500).json({ error: e?.message || 'Erro ao reiniciar' });
+    }
 });
 
 // Exibe variáveis carregadas e status básico do JWT

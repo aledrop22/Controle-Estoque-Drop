@@ -34,6 +34,7 @@ const App: React.FC = () => {
   const [loadAttempts, setLoadAttempts] = useState<number>(0);
   const [isLoadingInventory, setIsLoadingInventory] = useState<boolean>(false);
   const [filterDate, setFilterDate] = useState<string | null>(null);
+  const [isRestarting, setIsRestarting] = useState<boolean>(false);
 
   // Custom Filter State
   const [customThreshold, setCustomThreshold] = useState<number>(10);
@@ -234,6 +235,27 @@ const App: React.FC = () => {
     return data;
   }, [products, processedData, searchTerm, sortKey, sortDirection, statusFilter]);
 
+  // Função para reiniciar os servidores
+  const handleRestart = async () => {
+    if (isRestarting) return;
+
+    if (!confirm('Deseja reiniciar os servidores? A página será recarregada em alguns segundos.')) {
+      return;
+    }
+
+    setIsRestarting(true);
+    try {
+      await fetch('/api/restart', { method: 'POST' });
+      // Aguarda 5 segundos para os servidores reiniciarem
+      setTimeout(() => {
+        window.location.reload();
+      }, 5000);
+    } catch (e) {
+      setIsRestarting(false);
+      alert('Erro ao reiniciar servidores. Tente executar .\\start.ps1 manualmente.');
+    }
+  };
+
   // Função reutilizável de carregamento (hoje ou todos) com retry programado
   const fetchInventory = async (mode: 'today' | 'all', isRetry = false) => {
     setIsLoadingInventory(true);
@@ -281,13 +303,29 @@ const App: React.FC = () => {
   // Render
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Controle de Estoque</h1>
-        {autoLoadError ? (
-          <p className="font-semibold text-red-600">Não foi possível carregar dados da planilha.</p>
-        ) : (
-          !autoLoaded && <p className="font-semibold text-indigo-600">Carregando inventário da planilha...</p>
-        )}
+      <header className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Controle de Estoque</h1>
+          {autoLoadError ? (
+            <p className="font-semibold text-red-600">Não foi possível carregar dados da planilha.</p>
+          ) : (
+            !autoLoaded && <p className="font-semibold text-indigo-600">Carregando inventário da planilha...</p>
+          )}
+        </div>
+        <button
+          onClick={handleRestart}
+          disabled={isRestarting}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${isRestarting
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-indigo-600 text-white hover:bg-indigo-700'
+            }`}
+          title="Reinicia os servidores backend e frontend"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+          </svg>
+          {isRestarting ? 'Reiniciando...' : 'Atualizar Servidores'}
+        </button>
       </header>
 
       {/* Banner de loading / erro */}
