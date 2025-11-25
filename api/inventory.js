@@ -85,10 +85,28 @@ function mapRowsToProducts(rows, dateFilter) {
         const sales24h = entry.sales24h || 0;
         const captureDate = entry.date;
 
-        const historyEntries = hist.rows.slice(-30).map(h => ({
-            date: new Date(h.date + 'T12:00:00Z').toISOString(),
-            quantity: h.stock
-        }));
+        const historyEntries = hist.rows.slice(-30).map(h => {
+            // Valida e formata a data
+            const dateStr = h.date;
+            let validDate;
+
+            // Tenta criar a data de forma segura
+            if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                validDate = new Date(dateStr + 'T12:00:00Z');
+            } else {
+                validDate = new Date(dateStr);
+            }
+
+            // Se a data for inválida, usa a data atual
+            if (isNaN(validDate.getTime())) {
+                validDate = new Date();
+            }
+
+            return {
+                date: validDate.toISOString(),
+                quantity: h.stock
+            };
+        });
 
         return {
             id: String(id),
