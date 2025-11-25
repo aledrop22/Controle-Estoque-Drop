@@ -258,6 +258,9 @@ const App: React.FC = () => {
 
   // Função reutilizável de carregamento (hoje ou todos) com retry programado
   const fetchInventory = async (mode: 'today' | 'all', isRetry = false) => {
+    // Evita múltiplas chamadas simultâneas
+    if (isLoadingInventory) return;
+    
     setIsLoadingInventory(true);
     try {
       const controller = new AbortController();
@@ -277,7 +280,7 @@ const App: React.FC = () => {
       }
     } catch (e: any) {
       setAutoLoadError(e?.name === 'AbortError' ? 'Tempo de resposta excedido.' : (e.message || 'Erro ao carregar inventário backend.'));
-      if (!isRetry) {
+      if (!isRetry && loadAttempts < 5) {
         const backoff = Math.min(8000, 1000 + loadAttempts * 1000);
         setTimeout(() => setLoadAttempts(a => a + 1), backoff);
       }
@@ -286,11 +289,24 @@ const App: React.FC = () => {
     }
   };
 
-  // Efeito inicial + retentativas
+  // Efeito inicial + retentativas (com limite de tentativas)
   useEffect(() => {
-    if (!autoLoaded) {
-      fetchInventory('today', true);
+    let isMounted = true;
+    
+    if (!autoLoaded && loadAttempts < 5) {
+      // Usar timeout para evitar race conditions com StrictMode
+      const timer = setTimeout(() => {
+        if (isMounted && !autoLoaded) {
+          fetchInventory('today', true);
+        }
+      }, 100);
+      
+      return () => {
+        isMounted = false;
+        clearTimeout(timer);
+      };
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadAttempts, autoLoaded]);
 
   // Persist preferences locally
