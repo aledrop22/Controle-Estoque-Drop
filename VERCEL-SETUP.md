@@ -21,6 +21,7 @@
 
 #### ⚠️ IMPORTANTE: Copie do arquivo `.env` local
 
+**Para as Environment Variables normais:**
 ```bash
 SHEET_ID=seu_sheet_id_da_planilha_aqui
 GOOGLE_SERVICE_ACCOUNT_EMAIL=seu_email@projeto.iam.gserviceaccount.com
@@ -30,6 +31,33 @@ sua_chave_privada_completa_aqui_com_quebras_de_linha
 VITE_GEMINI_API_KEY=sua_chave_gemini_opcional
 ```
 
+**⚠️ ATENÇÃO: Variável VITE_GEMINI_API_KEY**
+
+A chave Gemini precisa estar disponível em **build time**. No Vercel:
+
+1. Vá em **Settings** → **Environment Variables**
+2. Adicione `VITE_GEMINI_API_KEY` com o valor da sua chave
+3. **IMPORTANTE**: Marque as 3 opções:
+   - ✅ Production
+   - ✅ Preview  
+   - ✅ Development
+
+**OU configure como Secret (recomendado):**
+
+1. No terminal local:
+```powershell
+# Instale a CLI da Vercel (se não tiver)
+npm i -g vercel
+
+# Faça login
+vercel login
+
+# Adicione o secret
+vercel secrets add vite_gemini_api_key "SUA_CHAVE_AQUI"
+```
+
+2. O `vercel.json` já está configurado para usar o secret `@vite_gemini_api_key`
+
 #### 📝 Dicas Importantes:
 
 - **SHEET_ID**: ID da sua planilha Google (está no `.env` local)
@@ -37,7 +65,10 @@ VITE_GEMINI_API_KEY=sua_chave_gemini_opcional
 - **GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY**: 
   - Cole a chave **COMPLETA** incluindo `-----BEGIN PRIVATE KEY-----` e `-----END PRIVATE KEY-----`
   - Se tiver `\n` no texto, **mantenha** (o código já converte)
-- **VITE_GEMINI_API_KEY**: Opcional, para insights de IA
+- **VITE_GEMINI_API_KEY**: 
+  - **OBRIGATÓRIO** estar nas 3 environments (Production, Preview, Development)
+  - Ou configure como secret (veja acima)
+  - Sem ela, os insights de IA não funcionarão
 
 #### 🔐 Permissões da Planilha
 Certifique-se que o email da Service Account tem acesso à planilha:
