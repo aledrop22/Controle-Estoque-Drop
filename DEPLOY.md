@@ -1,12 +1,15 @@
-# Configuração de Deploy na Vercel
+# Deploy na Vercel
 
-Este projeto está configurado para deploy na Vercel com Serverless Functions.
+Este projeto está preparado para deploy na Vercel utilizando Serverless Functions em `api/*` e build do frontend com Vite.
 
-## Passo a Passo para Deploy
+## Passos de Deploy
 
-### 1. Configurar Variáveis de Ambiente na Vercel
+### 1) Criar/Linkar Projeto na Vercel
+- Crie um projeto na Vercel e **importe do GitHub** o repositório `Controle-Estoque-Drop`.
+- Confirme o framework detectado (Vite) e o diretório de saída `dist` (já definido em `vercel.json`).
 
-Acesse o dashboard da Vercel e adicione as seguintes variáveis de ambiente:
+### 2) Configurar Variáveis de Ambiente
+Adicione no dashboard da Vercel (Environment: Production/Preview):
 
 ```
 SHEET_ID=seu_sheet_id_aqui
@@ -17,31 +20,31 @@ GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY=sua_chave_privada_completa
 VITE_GEMINI_API_KEY=sua_chave_gemini (opcional)
 ```
 
-**IMPORTANTE:** Para a `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`, cole a chave completa incluindo:
-- `-----BEGIN PRIVATE KEY-----`
-- Todo o conteúdo
-- `-----END PRIVATE KEY-----`
+- Cole a `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` **com cabeçalhos completos**:
+  - `-----BEGIN PRIVATE KEY-----`
+  - conteúdo da chave
+  - `-----END PRIVATE KEY-----`
+- Caso tenha copiado a chave com `\n`, **mantenha como foi gerada**; o código já converte `\n` para quebra de linha real.
+- Garanta que a Service Account tem acesso de leitura à planilha (`SHEET_ID`).
 
-### 2. Fazer Push para o GitHub
+### 3) Push para GitHub
 
-```bash
+```powershell
 git add .
-git commit -m "Configuração para Vercel"
+git commit -m "Preparar deploy Vercel"
 git push
 ```
 
-### 3. Deploy Automático
-
-A Vercel irá detectar automaticamente as mudanças e fazer o deploy.
+### 4) Deploy Automático
+- A Vercel irá buildar o frontend (`npm run build`) e disponibilizar as funções em `/api/*`.
+- O `vercel.json` já define `outputDirectory: dist`, rewrites de `/api`, e `maxDuration` para funções.
 
 ## Endpoints da API
 
-Depois do deploy, sua API estará disponível em:
-
-- `https://seu-projeto.vercel.app/api/inventory` - Lista de produtos
-- `https://seu-projeto.vercel.app/api/inventory?today=1` - Produtos de hoje
-- `https://seu-projeto.vercel.app/api/health` - Health check
-- `https://seu-projeto.vercel.app/api/debug-env` - Debug de variáveis
+- `https://<seu-projeto>.vercel.app/api/inventory` — Lista agregada de produtos
+- `https://<seu-projeto>.vercel.app/api/inventory?today=1` — Produtos filtrados pela data atual
+- `https://<seu-projeto>.vercel.app/api/health` — Health check
+- `https://<seu-projeto>.vercel.app/api/debug-env` — Diagnóstico de variáveis
 
 ## Estrutura do Projeto
 
@@ -54,18 +57,27 @@ Depois do deploy, sua API estará disponível em:
 vercel.json        # Configuração da Vercel
 ```
 
-## Testando Localmente
+## Testes Locais
 
-Para desenvolvimento local, continue usando:
-```bash
-.\start.ps1
+- Desenvolvimento:
+```powershell
+PowerShell -ExecutionPolicy Bypass -File .\start.ps1
+```
+- Build de produção:
+```powershell
+npm run build
 ```
 
+## Pós-Deploy: Checks Rápidos
+- Abra `https://<seu-projeto>.vercel.app/api/health` e confirme `{ ok: true }`.
+- Visite `.../api/debug-env` e verifique:
+  - `SHEET_ID` presente
+  - `PRIVATE_KEY_PRESENT: true`
+  - `JWT_INITIALIZED: true`
+- Teste `.../api/inventory?today=1` e valide `filterDate` e lista de produtos.
+
 ## Troubleshooting
-
-Se a API não funcionar na Vercel:
-
-1. Verifique as variáveis de ambiente no dashboard
-2. Acesse `/api/debug-env` para ver se as credenciais foram carregadas
-3. Verifique os logs no dashboard da Vercel
-4. Certifique-se que a Service Account tem permissão na planilha
+- **Credenciais**: Falhas 500 geralmente indicam variáveis ausentes ou chave inválida.
+- **Permissões**: Garanta que a Service Account está compartilhada na planilha (somente leitura).
+- **Datas**: A função normaliza datas; se o histórico vier com formatos diferentes, `inventory.js` trata `YYYY-MM-DD` e converte para ISO.
+- **Logs**: Use o dashboard de logs da Vercel nas funções `api/*` para investigar erros.

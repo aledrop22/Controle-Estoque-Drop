@@ -1,4 +1,4 @@
-# Inicia backend e frontend automaticamente (oculto)
+6# Inicia backend e frontend automaticamente (oculto)
 Write-Host "`n=== CONTROLE DE ESTOQUE - Inicializando ===" -ForegroundColor Cyan
 
 # Limpa portas

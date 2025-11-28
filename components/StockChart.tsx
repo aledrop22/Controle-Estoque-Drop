@@ -48,9 +48,20 @@ export const StockChart: React.FC<StockChartProps> = ({ products }) => {
 
   // Para comparação: desloca 30 dias para trás se possível
   const shiftDate = (iso: string, days: number) => {
-    const d = new Date(iso + 'T00:00:00');
-    d.setDate(d.getDate() + days);
-    return d.toISOString().slice(0, 10);
+    try {
+      // Valida o formato da data
+      if (!/^\d{4}-\d{2}-\d{2}/.test(iso)) {
+        return iso;
+      }
+      const d = new Date(iso + 'T00:00:00Z');
+      if (isNaN(d.getTime())) {
+        return iso;
+      }
+      d.setDate(d.getDate() + days);
+      return d.toISOString().slice(0, 10);
+    } catch {
+      return iso;
+    }
   };
 
   const compEndCandidate = shiftDate(defaultEnd, -30);

@@ -17,7 +17,8 @@ import {
   Minus,
   Filter,
   ArrowUpDown,
-  Calendar
+  Calendar,
+  Award
 } from 'lucide-react';
 
 type SortKey = 'name' | 'stock' | 'sales' | 'status';
@@ -100,7 +101,7 @@ const App: React.FC = () => {
       // Compare last 24h sales vs previous 24h
       const h = p.history;
       const todayIndex = h.length - 1;
-      const prevSales = (h[todayIndex - 1]?.quantity || 0) - (h[todayIndex - 2]?.quantity || 0);
+      const prevSales = Math.max(0, (h[todayIndex - 2]?.quantity || 0) - (h[todayIndex - 1]?.quantity || 0));
 
       let trend: 'UP' | 'DOWN' | 'STABLE' = 'STABLE';
       if (sales24h > Math.max(0, prevSales)) trend = 'UP';
@@ -110,6 +111,8 @@ const App: React.FC = () => {
         productId: p.id,
         name: p.name,
         salesLast24h: sales24h,
+        // usamos prevSales calculado para comparação por produto
+        prevSalesLast24h: prevSales,
         sales7d,
         sales15d,
         sales30d,
@@ -123,13 +126,26 @@ const App: React.FC = () => {
 
   // Dashboard Aggregates
   const metrics = useMemo(() => {
+    const getYesterdayStock = (p: Product) => {
+      const h = p.history;
+      const idx = h.length - 2;
+      return idx >= 0 ? h[idx].quantity : p.currentStock;
+    };
+
     const totalProducts = products.length;
     const lowStockCount = processedData.filter(d => d.stockStatus !== 'OK').length;
     const totalUnits = products.reduce((acc, curr) => acc + curr.currentStock, 0);
+    const totalUnitsYesterday = products.reduce((acc, curr) => acc + getYesterdayStock(curr), 0);
+    const totalProductsYesterday = products.filter(p => p.history.length >= 2).length || totalProducts;
+    const lowStockCountYesterday = products.reduce((acc, p) => {
+      const y = getYesterdayStock(p);
+      return acc + (y === 0 ? 1 : y <= customThreshold ? 1 : 0);
+    }, 0);
     const totalSales24h = processedData.reduce((acc, curr) => acc + curr.salesLast24h, 0);
-
-    return { totalProducts, lowStockCount, totalUnits, totalSales24h };
-  }, [products, processedData]);
+    // Soma das vendas das últimas 24h anteriores (ontem)
+    const totalPrevSales24h = processedData.reduce((acc, curr: any) => acc + (curr.prevSalesLast24h || 0), 0);
+    return { totalProducts, lowStockCount, totalUnits, totalUnitsYesterday, totalProductsYesterday, lowStockCountYesterday, totalSales24h, totalPrevSales24h };
+  }, [products, processedData, customThreshold]);
 
   // Top Sellers Data
   const topSellers = useMemo(() => {
@@ -260,7 +276,7 @@ const App: React.FC = () => {
   const fetchInventory = async (mode: 'today' | 'all', isRetry = false) => {
     // Evita múltiplas chamadas simultâneas
     if (isLoadingInventory) return;
-    
+
     setIsLoadingInventory(true);
     try {
       const controller = new AbortController();
@@ -292,7 +308,7 @@ const App: React.FC = () => {
   // Efeito inicial + retentativas (com limite de tentativas)
   useEffect(() => {
     let isMounted = true;
-    
+
     if (!autoLoaded && loadAttempts < 5) {
       // Usar timeout para evitar race conditions com StrictMode
       const timer = setTimeout(() => {
@@ -300,7 +316,7 @@ const App: React.FC = () => {
           fetchInventory('today', true);
         }
       }, 100);
-      
+
       return () => {
         isMounted = false;
         clearTimeout(timer);
@@ -332,8 +348,8 @@ const App: React.FC = () => {
           onClick={handleRestart}
           disabled={isRestarting}
           className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${isRestarting
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              : 'bg-indigo-600 text-white hover:bg-indigo-700'
+            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            : 'bg-indigo-600 text-white hover:bg-indigo-700'
             }`}
           title="Reinicia os servidores backend e frontend"
         >
@@ -387,6 +403,8 @@ const App: React.FC = () => {
           icon={Package}
           color="blue"
           subtext="Produtos cadastrados"
+          compareToday={metrics.totalProducts}
+          compareYesterday={metrics.totalProductsYesterday}
           onClick={() => setStatusFilter('ALL')}
           isActive={statusFilter === 'ALL'}
         />
@@ -396,6 +414,8 @@ const App: React.FC = () => {
           icon={Layers}
           color="yellow"
           subtext="Soma de itens em estoque"
+          compareToday={metrics.totalUnits}
+          compareYesterday={metrics.totalUnitsYesterday}
         />
         <StatsCard
           title="Alertas de Baixo Estoque"
@@ -403,15 +423,19 @@ const App: React.FC = () => {
           icon={AlertTriangle}
           color="red"
           subtext={`Abaixo de ${customThreshold} unid.`}
+          compareToday={metrics.lowStockCount}
+          compareYesterday={metrics.lowStockCountYesterday}
           onClick={() => setStatusFilter('LOW_CRITICAL')}
           isActive={statusFilter === 'LOW_CRITICAL'}
         />
         <StatsCard
           title="Itens Vendidos (24h)"
           value={metrics.totalSales24h}
-          icon={TrendingDown}
+          icon={ArrowUp}
           color="green"
-          subtext="Clique para ver vendidos"
+          subtext="Hoje vs Ontem"
+          compareToday={metrics.totalSales24h}
+          compareYesterday={metrics.totalPrevSales24h}
           onClick={() => {
             if (topSellersRange !== '24h') {
               setTopSellersRange('24h');
@@ -438,7 +462,7 @@ const App: React.FC = () => {
             <div className="p-5 border-b border-gray-100 flex flex-col gap-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <h3 className="text-lg font-semibold text-gray-800">Inventário Detalhado</h3>
+                  <h3 className="text-lg text-gray-800">Inventário Detalhado</h3>
                   {filterDate ? (
                     <span className="px-2 py-1 rounded text-[10px] bg-indigo-100 text-indigo-700 font-semibold" title="Data filtrada">{filterDate}</span>
                   ) : (
@@ -499,10 +523,11 @@ const App: React.FC = () => {
               <table className="w-full text-left border-collapse relative">
                 <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold sticky top-0 z-10 shadow-sm">
                   <tr>
+                    <th className="p-4 text-center cursor-pointer hover:bg-gray-100" onClick={() => handleSort('status')}>Status <SortIcon colKey="status" /></th>
                     <th className="p-4 cursor-pointer hover:bg-gray-100" onClick={() => handleSort('name')}>Produto <SortIcon colKey="name" /></th>
                     <th className="p-4 text-center cursor-pointer hover:bg-gray-100" onClick={() => handleSort('stock')}>Estoque <SortIcon colKey="stock" /></th>
+                    <th className="p-4 text-center">Preço</th>
                     <th className="p-4 text-center cursor-pointer hover:bg-gray-100" onClick={() => handleSort('sales')}>Vendas (24h) <SortIcon colKey="sales" /></th>
-                    <th className="p-4 text-center cursor-pointer hover:bg-gray-100" onClick={() => handleSort('status')}>Status <SortIcon colKey="status" /></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -512,19 +537,6 @@ const App: React.FC = () => {
                     const sales = analysis?.salesLast24h || 0;
                     return (
                       <tr key={product.id} className="hover:bg-gray-50 transition-colors group">
-                        <td className="p-4">
-                          <div className="font-medium text-gray-900 group-hover:text-indigo-600 transition-colors">{product.name}</div>
-                          <div className="text-xs text-gray-400">{product.category}</div>
-                        </td>
-                        <td className="p-4 text-center">
-                          <span className={`font-mono font-bold text-base ${isLow ? 'text-red-600' : 'text-gray-800'}`}>{product.currentStock}</span>
-                        </td>
-                        <td className="p-4 text-center">
-                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold ${sales > 0 ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
-                            {sales > 0 ? <ArrowUp size={12} /> : <Minus size={12} />}
-                            {sales}
-                          </span>
-                        </td>
                         <td className="p-4 text-center">
                           {isLow ? (
                             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-red-100 text-red-600 animate-pulse">
@@ -533,6 +545,30 @@ const App: React.FC = () => {
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-600">OK</span>
                           )}
+                        </td>
+                        <td className="p-4">
+                          <div className="text-gray-900 group-hover:text-indigo-600 transition-colors">{product.name}</div>
+                          <div className="text-xs text-gray-400">{product.category}</div>
+                        </td>
+                        <td className="p-4 text-center">
+                          <span className={`font-mono text-base ${isLow ? 'text-red-600' : 'text-gray-800'}`}>{product.currentStock}</span>
+                        </td>
+                        <td className="p-4 text-center">
+                          <span className="font-mono text-base text-gray-800">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price)}
+                          </span>
+                        </td>
+                        <td className="p-4 text-center">
+                          {(() => {
+                            const prev = analysis?.prevSalesLast24h || 0;
+                            const down = sales < prev;
+                            return (
+                              <div className="flex items-center justify-center gap-1">
+                                {down && <ArrowDown size={14} className="text-red-600" />}
+                                <span className="font-mono text-base text-gray-800">{sales}</span>
+                              </div>
+                            );
+                          })()}
                         </td>
                       </tr>
                     );
@@ -560,7 +596,7 @@ const App: React.FC = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
             <div className="p-4 border-b border-gray-100 bg-gray-50">
               <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                <TrendingDown className="text-indigo-600" size={20} />
+                <Award className="text-indigo-600" size={20} />
                 Top Vendas
               </h3>
             </div>
@@ -604,7 +640,26 @@ const App: React.FC = () => {
                 if (salesCount === 0) return null;
                 return (
                   <div key={`top-${item.productId}`} className="p-3 flex items-center gap-3 hover:bg-gray-50 transition-colors">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${index < 3 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'}`}>#{index + 1}</div>
+                    <div className="w-8 h-8 flex items-center justify-center">
+                      {index === 0 && (
+                        <span title="#1" className="w-8 h-8 rounded-full flex items-center justify-center bg-yellow-200 text-yellow-800 shadow-sm">
+                          🥇
+                        </span>
+                      )}
+                      {index === 1 && (
+                        <span title="#2" className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-300 text-gray-700 shadow-sm">
+                          🥈
+                        </span>
+                      )}
+                      {index === 2 && (
+                        <span title="#3" className="w-8 h-8 rounded-full flex items-center justify-center bg-amber-300 text-amber-800 shadow-sm">
+                          🥉
+                        </span>
+                      )}
+                      {index > 2 && (
+                        <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-gray-100 text-gray-500">#{index + 1}</span>
+                      )}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate" title={item.name}>{item.name}</p>
                       <p className="text-xs text-gray-500">Estoque atual: {products.find(p => p.id === item.productId)?.currentStock}</p>
