@@ -98,21 +98,6 @@ export const StockChart: React.FC<StockChartProps> = ({ products }) => {
           />
         </div>
       </div>
-      type="date"
-      value={compStart}
-      onChange={e => setCompStart(e.target.value)}
-      className="px-2 py-1 text-sm border rounded flex-1"
-            />
-      <span className="text-gray-500">até</span>
-      <input
-        type="date"
-        value={compEnd}
-        onChange={e => setCompEnd(e.target.value)}
-        className="px-2 py-1 text-sm border rounded flex-1"
-      />
-    </div>
-        </div >
-      </div >
 
       <div className="h-96">
         <ResponsiveContainer width="100%" height="100%">
@@ -132,32 +117,19 @@ export const StockChart: React.FC<StockChartProps> = ({ products }) => {
               label={{ value: 'Vendas', angle: -90, position: 'insideLeft' }}
             />
             <Tooltip
-              formatter={(value, name) => [value, name === 'refSales' ? 'Referência' : 'Comparação']}
+              formatter={(value) => [value, 'Vendas']}
               labelFormatter={(label) => `${(label || '').slice(8, 10)}/${(label || '').slice(5, 7)}/${(label || '').slice(0, 4)}`}
               contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
             />
-            <Legend formatter={(v) => v === 'refSales' ? 'Referência' : 'Comparação'} />
             <Line
               type="monotone"
-              dataKey="refSales"
+              dataKey="vendas"
               stroke="#0ea5e9"
               strokeWidth={3}
               dot={{ r: 5, stroke: '#0369a1', strokeWidth: 2 }}
               activeDot={{ r: 7 }}
-              connectNulls
             >
-              <LabelList dataKey="refSales" position="top" formatter={(v: any) => (typeof v === 'number' ? v : '')} className="text-xs" />
-            </Line>
-            <Line
-              type="monotone"
-              dataKey="compSales"
-              stroke="#f97316"
-              strokeWidth={3}
-              dot={{ r: 5, stroke: '#c2410c', strokeWidth: 2 }}
-              activeDot={{ r: 7 }}
-              connectNulls
-            >
-              <LabelList dataKey="compSales" position="top" formatter={(v: any) => (typeof v === 'number' ? v : '')} className="text-xs" />
+              <LabelList dataKey="vendas" position="top" className="text-xs" />
             </Line>
           </LineChart>
         </ResponsiveContainer>
@@ -167,6 +139,6 @@ export const StockChart: React.FC<StockChartProps> = ({ products }) => {
         <p>• Vendas diárias = diferença de estoque entre dias consecutivos (agregado de todos os produtos)</p>
         <p>• Selecione o período usando os campos de data acima</p>
       </div>
-    </div >
+    </div>
   );
 };
