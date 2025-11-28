@@ -3,9 +3,17 @@ import { AlertTriangle, RefreshCw, Database } from 'lucide-react';
 import type { Product } from '../src/types';
 
 interface SummaryResp { loaded: boolean; count: number; sample: Product[] }
+interface RawDebugData {
+    product: string;
+    rawCount: number;
+    dedupedCount: number;
+    rawEntries: Array<{ date: string; stock: number }>;
+    dedupedEntries: Array<{ date: string; stock: number; sales24h: number }>;
+}
 
 export const InventoryDebug: React.FC = () => {
     const [summary, setSummary] = useState<SummaryResp | null>(null);
+    const [rawDebug, setRawDebug] = useState<{ totalProducts: number; debugData: RawDebugData[] } | null>(null);
     const [rawError, setRawError] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
 
@@ -39,6 +47,21 @@ export const InventoryDebug: React.FC = () => {
         }
     }
 
+    const loadRawDebug = async () => {
+        setLoading(true);
+        setRawError('');
+        try {
+            const resp = await fetch('/api/inventory-raw');
+            if (!resp.ok) throw new Error('Falha raw debug ' + resp.status);
+            const json = await resp.json();
+            setRawDebug(json);
+        } catch (e: any) {
+            setRawError(e.message || 'Erro raw debug');
+        } finally {
+            setLoading(false);
+        }
+    }
+
     useEffect(() => { loadSummary(); }, []);
 
     return (
@@ -54,6 +77,9 @@ export const InventoryDebug: React.FC = () => {
                 </button>
                 <button onClick={forceFull} className="px-2 py-1 text-xs bg-gray-800 text-white rounded flex items-center gap-1">
                     <RefreshCw size={12} /> Forçar /api/inventory
+                </button>
+                <button onClick={loadRawDebug} className="px-2 py-1 text-xs bg-orange-600 text-white rounded flex items-center gap-1">
+                    <Database size={12} /> Raw vs Dedupe
                 </button>
             </div>
             {rawError && (
@@ -83,6 +109,35 @@ export const InventoryDebug: React.FC = () => {
                                 </tbody>
                             </table>
                         )}
+                    </div>
+                </div>
+            )}
+            {rawDebug && (
+                <div className="text-xs space-y-2">
+                    <div><strong>Total Produtos:</strong> {rawDebug.totalProducts}</div>
+                    <div className="max-h-80 overflow-auto border rounded p-2 bg-gray-50 space-y-3">
+                        {rawDebug.debugData.map((item, idx) => (
+                            <div key={idx} className="border-b pb-2">
+                                <div className="font-semibold text-gray-800">{item.product}</div>
+                                <div className="text-[10px] text-gray-600">
+                                    Linhas brutas: {item.rawCount} | Após dedupe: {item.dedupedCount}
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 mt-1">
+                                    <div>
+                                        <div className="font-semibold text-red-700">Brutas (últimas 5):</div>
+                                        {item.rawEntries.map((e, i) => (
+                                            <div key={i} className="text-[10px]">{e.date}: {e.stock}</div>
+                                        ))}
+                                    </div>
+                                    <div>
+                                        <div className="font-semibold text-green-700">Dedupe (últimas 5):</div>
+                                        {item.dedupedEntries.map((e, i) => (
+                                            <div key={i} className="text-[10px]">{e.date}: {e.stock} (↓ {e.sales24h})</div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             )}
