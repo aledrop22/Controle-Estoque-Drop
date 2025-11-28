@@ -41,17 +41,25 @@ export const StockChart: React.FC<StockChartProps> = ({ products }) => {
     return Object.keys(dailySalesMap).sort();
   }, [dailySalesMap]);
 
-  // Últimos 30 dias por padrão
-  const [numDays, setNumDays] = useState<number>(30);
+  // Padrão: últimos 10 dias para referência
+  const defaultEnd = allDates[allDates.length - 1] || '';
+  const defaultStartIndex = Math.max(0, allDates.length - 11);
+  const defaultStart = allDates[defaultStartIndex] || allDates[0] || '';
 
-  // Dados para o gráfico: últimos N dias
+  // Estado dos intervalos (usuário pode escolher datas via input)
+  const [refStart, setRefStart] = useState<string>(defaultStart);
+  const [refEnd, setRefEnd] = useState<string>(defaultEnd);
+
+  // Filtra datas dentro do intervalo
+  const refDates = useMemo(() => allDates.filter(d => d >= refStart && d <= refEnd), [allDates, refStart, refEnd]);
+
+  // Dataset para o gráfico
   const chartData = useMemo(() => {
-    const dates = allDates.slice(-numDays);
-    return dates.map(date => ({
+    return refDates.map(date => ({
       date,
       vendas: dailySalesMap[date] || 0
     }));
-  }, [allDates, dailySalesMap, numDays]);
+  }, [refDates, dailySalesMap]);
 
   // Máximo para escala Y
   const maxSales = useMemo(() => {
@@ -63,29 +71,49 @@ export const StockChart: React.FC<StockChartProps> = ({ products }) => {
     const arr: number[] = [];
     const limit = Math.max(step, Math.ceil(maxSales / step) * step);
     for (let v = 0; v <= limit; v += step) arr.push(v);
-    if (!arr.includes(maxSales)) arr.push(maxSales);
+    if (!arr.includes(maxSales) && maxSales > 0) arr.push(maxSales);
     return arr;
   }, [maxSales]);
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-      <h3 className="text-lg font-semibold text-gray-800 mb-4">Vendas Diárias (Últimos Dias)</h3>
-      <div className="mb-4 flex items-center gap-3">
-        <label className="text-sm font-medium text-gray-700">Exibir últimos:</label>
-        <select
-          value={numDays}
-          onChange={(e) => setNumDays(Number(e.target.value))}
-          className="px-3 py-1 border border-gray-300 rounded text-sm"
-        >
-          <option value={7}>7 dias</option>
-          <option value={15}>15 dias</option>
-          <option value={30}>30 dias</option>
-          <option value={60}>60 dias</option>
-        </select>
-        <span className="text-xs text-gray-500">
-          Mostrando vendas diárias (diferença de estoque dia a dia)
-        </span>
+      <h3 className="text-lg font-semibold text-gray-800 mb-4">Vendas Diárias por Período</h3>
+
+      {/* Seletor de período */}
+      <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 mb-6">
+        <div className="text-sm font-semibold text-blue-900 mb-2">Selecione o Período</div>
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={refStart}
+            onChange={e => setRefStart(e.target.value)}
+            className="px-2 py-1 text-sm border rounded flex-1"
+          />
+          <span className="text-gray-500">até</span>
+          <input
+            type="date"
+            value={refEnd}
+            onChange={e => setRefEnd(e.target.value)}
+            className="px-2 py-1 text-sm border rounded flex-1"
+          />
+        </div>
       </div>
+      type="date"
+      value={compStart}
+      onChange={e => setCompStart(e.target.value)}
+      className="px-2 py-1 text-sm border rounded flex-1"
+            />
+      <span className="text-gray-500">até</span>
+      <input
+        type="date"
+        value={compEnd}
+        onChange={e => setCompEnd(e.target.value)}
+        className="px-2 py-1 text-sm border rounded flex-1"
+      />
+    </div>
+        </div >
+      </div >
+
       <div className="h-96">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={{ top: 10, right: 40, left: 20, bottom: 10 }}>
@@ -99,32 +127,46 @@ export const StockChart: React.FC<StockChartProps> = ({ products }) => {
             <YAxis
               stroke="#9ca3af"
               fontSize={12}
-              domain={[0, Math.max(...yTicks)]}
+              domain={[0, 'auto']}
               ticks={yTicks}
               label={{ value: 'Vendas', angle: -90, position: 'insideLeft' }}
             />
             <Tooltip
-              formatter={(value) => [value, 'Vendas']}
-              labelFormatter={(label) => `Dia ${(label || '').slice(8, 10)}/${(label || '').slice(5, 7)}/${(label || '').slice(0, 4)}`}
+              formatter={(value, name) => [value, name === 'refSales' ? 'Referência' : 'Comparação']}
+              labelFormatter={(label) => `${(label || '').slice(8, 10)}/${(label || '').slice(5, 7)}/${(label || '').slice(0, 4)}`}
               contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
             />
+            <Legend formatter={(v) => v === 'refSales' ? 'Referência' : 'Comparação'} />
             <Line
               type="monotone"
-              dataKey="vendas"
+              dataKey="refSales"
               stroke="#0ea5e9"
               strokeWidth={3}
               dot={{ r: 5, stroke: '#0369a1', strokeWidth: 2 }}
               activeDot={{ r: 7 }}
+              connectNulls
             >
-              <LabelList dataKey="vendas" position="top" className="text-xs" />
+              <LabelList dataKey="refSales" position="top" formatter={(v: any) => (typeof v === 'number' ? v : '')} className="text-xs" />
+            </Line>
+            <Line
+              type="monotone"
+              dataKey="compSales"
+              stroke="#f97316"
+              strokeWidth={3}
+              dot={{ r: 5, stroke: '#c2410c', strokeWidth: 2 }}
+              activeDot={{ r: 7 }}
+              connectNulls
+            >
+              <LabelList dataKey="compSales" position="top" formatter={(v: any) => (typeof v === 'number' ? v : '')} className="text-xs" />
             </Line>
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <div className="mt-4 text-[11px] text-gray-500">
-        <p>• Cada ponto representa as vendas totais do dia (soma de todos os produtos)</p>
-        <p>• Vendas = Estoque do dia anterior - Estoque do dia atual (quando positivo)</p>
+
+      <div className="mt-4 text-xs text-gray-500">
+        <p>• Vendas diárias = diferença de estoque entre dias consecutivos (agregado de todos os produtos)</p>
+        <p>• Selecione o período usando os campos de data acima</p>
       </div>
-    </div>
+    </div >
   );
 };
