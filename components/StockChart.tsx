@@ -21,12 +21,12 @@ const useDailySales = (products: Product[]) => {
     products.forEach(p => {
       const h = p.history;
       for (let i = 0; i < h.length - 1; i++) {
-        const today = h[i];
-        const next = h[i + 1];
-        // Vendas = estoque anterior - estoque atual (se caiu)
-        const sold = today.quantity > next.quantity ? (today.quantity - next.quantity) : 0;
-        // Associar a data de 'next' como vendas daquele dia
-        salesMap[next.date] = (salesMap[next.date] || 0) + sold;
+        const prev = h[i];
+        const curr = h[i + 1];
+        // Normaliza para data local (YYYY-MM-DD) usando fuso Z e cortando ISO
+        const dateKey = (curr.date || '').slice(0, 10);
+        const sold = prev.quantity > curr.quantity ? (prev.quantity - curr.quantity) : 0;
+        salesMap[dateKey] = (salesMap[dateKey] || 0) + sold;
       }
     });
     return salesMap; // { '2025-11-20': 34, ... }
@@ -37,7 +37,7 @@ export const StockChart: React.FC<StockChartProps> = ({ products }) => {
   // Todas as datas disponíveis (histórico global)
   const allDates = useMemo(() => {
     const set = new Set<string>();
-    products.forEach(p => p.history.forEach(h => set.add(h.date)));
+    products.forEach(p => p.history.forEach(h => set.add((h.date || '').slice(0, 10))));
     return Array.from(set).sort();
   }, [products]);
 
@@ -64,10 +64,22 @@ export const StockChart: React.FC<StockChartProps> = ({ products }) => {
     }
   };
 
+  // Calcula intervalo de comparação com o MESMO número de dias do intervalo de referência, deslocando -30 dias
+  const refSpanDays = Math.max(0, allDates.indexOf(defaultEnd) - allDates.indexOf(defaultStart));
   const compEndCandidate = shiftDate(defaultEnd, -30);
   const compStartCandidate = shiftDate(defaultStart, -30);
-  const validCompStart = allDates.find(d => d === compStartCandidate) || allDates[0];
-  const validCompEnd = allDates.find(d => d === compEndCandidate) || allDates[Math.min(10, allDates.length - 1)];
+  let validCompEnd = allDates.find(d => d === compEndCandidate) || compEndCandidate;
+  let validCompStart = allDates.find(d => d === compStartCandidate) || compStartCandidate;
+  // Ajusta compStart para garantir o mesmo número de pontos do ref
+  const endIdx = allDates.indexOf(validCompEnd);
+  if (endIdx >= 0) {
+    const startIdx = Math.max(0, endIdx - refSpanDays);
+    validCompStart = allDates[startIdx];
+  } else {
+    // fallback: se a data não existir, usa início do conjunto de datas
+    validCompStart = allDates[0];
+    validCompEnd = allDates[Math.min(refSpanDays, allDates.length - 1)];
+  }
 
   const [refStart, setRefStart] = useState<string>(defaultStart);
   const [refEnd, setRefEnd] = useState<string>(defaultEnd);
@@ -133,7 +145,7 @@ export const StockChart: React.FC<StockChartProps> = ({ products }) => {
           {/* Eixo inferior: dias. Eixo vertical: vendas */}
           <LineChart data={chartData} margin={{ top: 10, right: 40, left: 20, bottom: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} tickFormatter={d => d.slice(8, 10) + '/' + d.slice(5, 7)} />
+            <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} tickFormatter={d => (d || '').slice(8, 10) + '/' + (d || '').slice(5, 7)} />
             <YAxis dataKey="refSales" stroke="#9ca3af" fontSize={12} domain={[0, Math.max(...yTicks)]} ticks={yTicks} label={{ value: 'Vendas', angle: -90, position: 'insideLeft' }} />
             <Tooltip
               formatter={(value, name) => [value, name === 'refSales' ? 'Referência' : 'Comparação']}

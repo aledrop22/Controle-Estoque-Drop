@@ -39,6 +39,12 @@ function mapRowsToProducts(rows, dateFilter) {
 
     Object.keys(productHistory).forEach(key => {
         const hist = productHistory[key];
+        // Deduplicar por data: manter a última ocorrência da data
+        const byDate = new Map();
+        hist.rows.forEach(entry => {
+            byDate.set(entry.date, entry); // sobrescreve mantendo o último visto
+        });
+        hist.rows = Array.from(byDate.values());
         hist.rows.sort((a, b) => a.date.localeCompare(b.date));
 
         for (let i = 1; i < hist.rows.length; i++) {

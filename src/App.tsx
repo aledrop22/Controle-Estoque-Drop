@@ -562,8 +562,10 @@ const App: React.FC = () => {
                           {(() => {
                             const prev = analysis?.prevSalesLast24h || 0;
                             const down = sales < prev;
+                            const delta = sales - prev;
+                            const tooltip = `Hoje: ${sales} | Ontem: ${prev} | Δ ${delta >= 0 ? "+" + delta : delta}`;
                             return (
-                              <div className="flex items-center justify-center gap-1">
+                              <div className="flex items-center justify-center gap-1" title={tooltip}>
                                 {down && <ArrowDown size={14} className="text-red-600" />}
                                 <span className="font-mono text-base text-gray-800">{sales}</span>
                               </div>
