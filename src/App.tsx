@@ -104,7 +104,17 @@ const App: React.FC = () => {
   // Novos produtos (primeiro registro exatamente na última data)
   const newProducts = useMemo(() => {
     if (!latestDate) return [] as Product[];
-    return products.filter(p => p.history.length > 0 && p.history[0].date === latestDate);
+    // Produtos cujo histórico tem apenas 1 entrada E essa entrada é da última data
+    // OU produtos cujo penúltimo registro não existe (só tem 1) e é da última data
+    return products.filter(p => {
+      if (!p.history || p.history.length === 0) return false;
+      // Se tem só 1 registro no histórico e é da última data = NOVO
+      if (p.history.length === 1 && p.history[0].date === latestDate) return true;
+      // Se tem múltiplos registros, verifica se o primeiro (mais antigo) é da última data
+      // Isso significa que o produto apareceu pela primeira vez nessa data
+      const firstDate = p.history[0].date;
+      return firstDate === latestDate;
+    });
   }, [products, latestDate]);
 
   // Process data to calculate derived metrics (Sales, Status)
