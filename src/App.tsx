@@ -486,15 +486,15 @@ const App: React.FC = () => {
       </div>
 
       {/* Novos SKUs - Logo após os cards */}
-      {newProducts.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
-          <div className="p-4 border-b border-gray-100 bg-emerald-50 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-              <span className="text-2xl">🆕</span>
-              Novos SKUs Detectados
-            </h3>
-            <span className="px-3 py-1 rounded-full text-sm font-bold bg-emerald-600 text-white">{newProducts.length} novo(s)</span>
-          </div>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
+        <div className="p-4 border-b border-gray-100 bg-emerald-50 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+            <span className="text-2xl">🆕</span>
+            Novos SKUs Detectados
+          </h3>
+          <span className="px-3 py-1 rounded-full text-sm font-bold bg-emerald-600 text-white">{newProducts.length} novo(s)</span>
+        </div>
+        {newProducts.length > 0 ? (
           <div className="p-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {newProducts.slice(0, 20).map(p => (
@@ -511,7 +511,7 @@ const App: React.FC = () => {
                       <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700" title="Dia de entrada">
                         {(() => {
                           const raw = p.history?.[0]?.date || p.captureDate || '';
-                          const fmt = raw ? `${raw.slice(8,10)}-${raw.slice(5,7)}-${raw.slice(0,4)}` : 'N/A';
+                          const fmt = raw ? `${raw.slice(8, 10)}-${raw.slice(5, 7)}-${raw.slice(0, 4)}` : 'N/A';
                           return `Entrada: ${fmt}`;
                         })()}
                       </span>
@@ -530,8 +530,13 @@ const App: React.FC = () => {
               ))}
             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="p-8 text-center text-gray-400">
+            <p className="text-sm">Nenhum produto novo detectado no último dia de coleta.</p>
+            <p className="text-xs mt-1">Novos SKUs aparecem quando há primeiro registro na data mais recente.</p>
+          </div>
+        )}
+      </div>
 
       {/* Área Principal */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
