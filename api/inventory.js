@@ -90,6 +90,27 @@ function mapRowsToProducts(rows, dateFilter) {
         const currentStock = entry.stock;
         const sales24h = entry.sales24h || 0;
         const captureDate = entry.date;
+        // Tenta obter URL da planilha (colunas possíveis)
+        let url = getColumn(r, 'URL')
+            || getColumn(r, 'Link')
+            || getColumn(r, 'Página')
+            || getColumn(r, 'Pagina')
+            || getColumn(r, 'Product URL');
+        if (url && typeof url === 'string') {
+            url = String(url).trim();
+            if (!/^https?:\/\//i.test(url)) {
+                url = undefined;
+            }
+        } else {
+            url = undefined;
+        }
+
+        // Template opcional via env: PRODUCT_URL_TEMPLATE (ex: https://shop.com/item/{id})
+        if (!url && process.env.PRODUCT_URL_TEMPLATE && id) {
+            try {
+                url = String(process.env.PRODUCT_URL_TEMPLATE).replace('{id}', String(id));
+            } catch { /* noop */ }
+        }
 
         const historyEntries = hist.rows.slice(-30).map(h => ({
             date: h.date, // Mantém formato YYYY-MM-DD puro
@@ -105,6 +126,7 @@ function mapRowsToProducts(rows, dateFilter) {
             captureDate,
             sales24h,
             minStockThreshold: 10,
+            url,
             history: historyEntries
         };
     });

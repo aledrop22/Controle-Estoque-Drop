@@ -11,6 +11,7 @@ export interface Product {
   price: number;
   currentStock: number;
   minStockThreshold: number;
+  url?: string;
   history: DailySnapshot[]; // Sorted by date ascending
 }
 

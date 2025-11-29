@@ -82,6 +82,21 @@ const App: React.FC = () => {
     return totalSold;
   };
 
+  // Data util: última data global do histórico
+  const latestDate = useMemo(() => {
+    const dates: string[] = [];
+    products.forEach(p => p.history.forEach(h => dates.push(h.date)));
+    if (dates.length === 0) return null;
+    dates.sort();
+    return dates[dates.length - 1] || null;
+  }, [products]);
+
+  // Novos produtos (primeiro registro exatamente na última data)
+  const newProducts = useMemo(() => {
+    if (!latestDate) return [] as Product[];
+    return products.filter(p => p.history.length > 0 && p.history[0].date === latestDate);
+  }, [products, latestDate]);
+
   // Process data to calculate derived metrics (Sales, Status)
   const processedData = useMemo(() => {
     const analysis: (ProductAnalysis & { sales7d: number, sales15d: number, sales30d: number })[] = products.map(p => {
@@ -547,7 +562,20 @@ const App: React.FC = () => {
                           )}
                         </td>
                         <td className="p-4">
-                          <div className="text-gray-900 group-hover:text-indigo-600 transition-colors">{product.name}</div>
+                          <div className="flex items-center gap-2">
+                            {product.url ? (
+                              <a href={product.url} target="_blank" rel="noopener noreferrer" className="text-indigo-700 hover:text-indigo-900 underline underline-offset-2">
+                                {product.name}
+                              </a>
+                            ) : (
+                              <span className="text-gray-900 group-hover:text-indigo-600 transition-colors">{product.name}</span>
+                            )}
+                            {newProducts.some(np => np.id === product.id) && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700" title="Produto novo no último dia">
+                                Novo
+                              </span>
+                            )}
+                          </div>
                           <div className="text-xs text-gray-400">{product.category}</div>
                         </td>
                         <td className="p-4 text-center">
@@ -680,6 +708,37 @@ const App: React.FC = () => {
             <div className="p-2 bg-gray-50 border-t border-gray-100 text-center">
               <span className="text-[10px] text-gray-400 font-medium">Exibindo os top 15</span>
             </div>
+          </div>
+          {/* Novos SKUs */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="p-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-800">Novos SKUs</h3>
+              <span className="text-xs text-gray-500">{newProducts.length} novo(s)</span>
+            </div>
+            {newProducts.length > 0 ? (
+              <div className="divide-y divide-gray-50 max-h-[280px] overflow-y-auto">
+                {newProducts.slice(0, 20).map(p => (
+                  <div key={`new-${p.id}`} className="p-3 flex items-center justify-between gap-3 hover:bg-gray-50">
+                    <div className="min-w-0">
+                      {p.url ? (
+                        <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-indigo-700 hover:text-indigo-900 truncate block" title={p.name}>
+                          {p.name}
+                        </a>
+                      ) : (
+                        <span className="text-sm font-medium text-gray-900 truncate block" title={p.name}>{p.name}</span>
+                      )}
+                      <span className="text-[10px] text-gray-400">{p.category}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-gray-500 uppercase">Estoque</span>
+                      <div className="font-mono text-sm text-gray-800">{p.currentStock}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-6 text-center text-gray-400 text-sm">Nenhum SKU novo na última data.</div>
+            )}
           </div>
           <StockChart products={products} />
         </div>
