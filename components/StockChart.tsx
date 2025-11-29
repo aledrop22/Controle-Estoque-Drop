@@ -39,7 +39,8 @@ export const StockChart: React.FC<StockChartProps> = ({ products, onPeriodChange
   // Notifica mudança de período
   useEffect(() => {
     onPeriodChange?.(refStart, refEnd);
-  }, [refStart, refEnd, onPeriodChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refStart, refEnd]);
 
   // Calcula vendas diárias APENAS no período selecionado
   const chartData = useMemo(() => {

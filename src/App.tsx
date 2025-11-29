@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { MOCK_DATA } from './constants';
 import { Product, ProductAnalysis, DashboardMetrics } from './types';
 import { StatsCard } from '../components/StatsCard';
@@ -41,6 +41,11 @@ const App: React.FC = () => {
     try { return localStorage.getItem('showDebugPanel') === '1'; } catch { return false; }
   });
   const [chartPeriod, setChartPeriod] = useState<{ start: string; end: string }>({ start: '', end: '' });
+
+  // Callback estável para evitar loop infinito
+  const handlePeriodChange = useCallback((start: string, end: string) => {
+    setChartPeriod({ start, end });
+  }, []);
 
   // Custom Filter State
   const [customThreshold, setCustomThreshold] = useState<number>(10);
@@ -757,7 +762,7 @@ const App: React.FC = () => {
               <div className="p-6 text-center text-gray-400 text-sm">Nenhum SKU novo na última data.</div>
             )}
           </div>
-          <StockChart products={products} onPeriodChange={(start, end) => setChartPeriod({ start, end })} />
+          <StockChart products={products} onPeriodChange={handlePeriodChange} />
         </div>
       </div>
     </div>
