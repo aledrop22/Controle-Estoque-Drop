@@ -23,8 +23,7 @@ const useDailySales = (products: Product[]) => {
       for (let i = 0; i < h.length - 1; i++) {
         const prev = h[i];
         const curr = h[i + 1];
-        // Normaliza para data local (YYYY-MM-DD) usando fuso Z e cortando ISO
-        const dateKey = (curr.date || '').slice(0, 10);
+        const dateKey = curr.date; // Já vem no formato YYYY-MM-DD da API
         const sold = prev.quantity > curr.quantity ? (prev.quantity - curr.quantity) : 0;
         salesMap[dateKey] = (salesMap[dateKey] || 0) + sold;
       }
