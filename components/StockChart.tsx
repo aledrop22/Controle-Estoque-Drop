@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   LineChart,
   Line,
@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 import { Product } from '../src/types';
 
-interface StockChartProps { 
+interface StockChartProps {
   products: Product[];
   onPeriodChange?: (start: string, end: string) => void;
 }
