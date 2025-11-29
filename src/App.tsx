@@ -492,7 +492,6 @@ const App: React.FC = () => {
           {(showDebugPanel || !autoLoaded || new URLSearchParams(window.location.search).get('debug') === '1') && (
             <InventoryDebug refStart={chartPeriod.start} refEnd={chartPeriod.end} />
           )}
-          <GeminiInsight analysisData={processedData} />
 
           {/* Tabela de Produtos */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -764,6 +763,11 @@ const App: React.FC = () => {
           </div>
           <StockChart products={products} onPeriodChange={handlePeriodChange} />
         </div>
+      </div>
+
+      {/* Análise Inteligente - Seção Inferior */}
+      <div className="mt-8">
+        <GeminiInsight analysisData={processedData} />
       </div>
     </div>
   );
