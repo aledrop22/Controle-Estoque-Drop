@@ -104,17 +104,27 @@ const App: React.FC = () => {
   // Novos produtos (primeiro registro exatamente na última data)
   const newProducts = useMemo(() => {
     if (!latestDate) return [] as Product[];
-    // Produtos cujo histórico tem apenas 1 entrada E essa entrada é da última data
-    // OU produtos cujo penúltimo registro não existe (só tem 1) e é da última data
+
+    const today = new Date(latestDate);
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(today.getDate() - 7);
+    const sevenDaysAgoStr = sevenDaysAgo.toISOString().slice(0, 10);
+
     return products.filter(p => {
       if (!p.history || p.history.length === 0) return false;
-      // Se tem só 1 registro no histórico e é da última data = NOVO
-      if (p.history.length === 1 && p.history[0].date === latestDate) return true;
-      // Se tem múltiplos registros, verifica se o primeiro (mais antigo) é da última data
-      // Isso significa que o produto apareceu pela primeira vez nessa data
       const firstDate = p.history[0].date;
-      return firstDate === latestDate;
-    });
+      // Mostra produtos cujo primeiro registro é nos últimos 7 dias ou mais antigo
+      return firstDate >= sevenDaysAgoStr;
+    }).map(p => {
+      const firstDate = p.history[0].date;
+      const daysDiff = Math.floor((today.getTime() - new Date(firstDate).getTime()) / (1000 * 60 * 60 * 24));
+      return { ...p, isNew: daysDiff <= 7, daysSinceEntry: daysDiff };
+    }).sort((a, b) => {
+      // Ordena por data de entrada (mais recente primeiro)
+      const dateA = new Date(a.history[0].date).getTime();
+      const dateB = new Date(b.history[0].date).getTime();
+      return dateB - dateA;
+    }).slice(0, 10); // Máximo 10 produtos
   }, [products, latestDate]);
 
   // Process data to calculate derived metrics (Sales, Status)
@@ -507,37 +517,51 @@ const App: React.FC = () => {
         {newProducts.length > 0 ? (
           <div className="p-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-              {newProducts.slice(0, 20).map(p => (
-                <div key={`new-${p.id}`} className="p-3 border border-gray-200 rounded-lg hover:border-emerald-400 hover:shadow-md transition-all group">
-                  <div className="flex flex-col gap-2">
-                    {p.url ? (
-                      <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-indigo-700 hover:text-indigo-900 line-clamp-2 group-hover:underline" title={p.name}>
-                        {p.name}
-                      </a>
-                    ) : (
-                      <span className="text-sm font-semibold text-gray-900 line-clamp-2" title={p.name}>{p.name}</span>
-                    )}
-                    <div className="flex items-center gap-2 text-[11px] text-gray-600">
-                      <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700" title="Dia de entrada">
-                        {(() => {
-                          const raw = p.history?.[0]?.date || p.captureDate || '';
-                          const fmt = raw ? `${raw.slice(8, 10)}-${raw.slice(5, 7)}-${raw.slice(0, 4)}` : 'N/A';
-                          return `Entrada: ${fmt}`;
-                        })()}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-500">{p.category}</span>
-                      <span className="font-mono font-bold text-emerald-600" title="Estoque atual">Estoque = {p.currentStock} unid.</span>
-                    </div>
-                    {p.price > 0 && (
-                      <div className="text-xs text-gray-600 font-semibold">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.price)}
+              {newProducts.map((p, idx) => {
+                const isNew = (p as any).isNew;
+                const daysSince = (p as any).daysSinceEntry;
+                return (
+                  <div key={`new-${p.id}`} className={`p-3 border-2 rounded-lg hover:shadow-md transition-all group ${isNew ? 'border-emerald-300 bg-emerald-50/30' : 'border-red-300 bg-red-50/30'}`}>
+                    <div className="flex flex-col gap-2">
+                      {/* Tag de status */}
+                      <div className="flex items-center justify-between">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isNew ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
+                          {isNew ? '🆕 NOVO' : '⏰ MAIS DE 1 SEMANA'}
+                        </span>
+                        <span className="text-[10px] text-gray-500">{daysSince}d</span>
                       </div>
-                    )}
+                      {/* Nome com numeração no início */}
+                      {p.url ? (
+                        <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-indigo-700 hover:text-indigo-900 line-clamp-2 group-hover:underline" title={p.name}>
+                          <span className={`${isNew ? 'text-emerald-600' : 'text-red-600'}`}>#{idx + 1}</span> {p.name}
+                        </a>
+                      ) : (
+                        <span className="text-sm font-semibold text-gray-900 line-clamp-2" title={p.name}>
+                          <span className={`${isNew ? 'text-emerald-600' : 'text-red-600'}`}>#{idx + 1}</span> {p.name}
+                        </span>
+                      )}
+                      <div className="flex items-center gap-2 text-[11px] text-gray-600">
+                        <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700" title="Dia de entrada">
+                          {(() => {
+                            const raw = p.history?.[0]?.date || p.captureDate || '';
+                            const fmt = raw ? `${raw.slice(8, 10)}-${raw.slice(5, 7)}-${raw.slice(0, 4)}` : 'N/A';
+                            return `Entrada: ${fmt}`;
+                          })()}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-gray-500">{p.category}</span>
+                        <span className="font-mono font-bold text-emerald-600" title="Estoque atual">Estoque = {p.currentStock} unid.</span>
+                      </div>
+                      {p.price > 0 && (
+                        <div className="text-xs text-gray-600 font-semibold">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.price)}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ) : (
