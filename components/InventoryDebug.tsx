@@ -10,10 +10,20 @@ interface RawDebugData {
     rawEntries: Array<{ date: string; stock: number }>;
     dedupedEntries: Array<{ date: string; stock: number; sales24h: number }>;
 }
+interface StatsDebug {
+    totalProducts: number;
+    totalHistoryRecords: number;
+    avgHistoryPerProduct: number;
+    totalDates: number;
+    totalSalesAllTime: number;
+    salesByDate: Record<string, number>;
+    historyStats: Array<{ name: string; historyLength: number; firstDate: string; lastDate: string }>;
+}
 
 export const InventoryDebug: React.FC = () => {
     const [summary, setSummary] = useState<SummaryResp | null>(null);
     const [rawDebug, setRawDebug] = useState<{ totalProducts: number; debugData: RawDebugData[] } | null>(null);
+    const [statsDebug, setStatsDebug] = useState<StatsDebug | null>(null);
     const [rawError, setRawError] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
 
@@ -62,6 +72,22 @@ export const InventoryDebug: React.FC = () => {
         }
     }
 
+    const loadStatsDebug = async () => {
+        setLoading(true);
+        setRawError('');
+        try {
+            const resp = await fetch('/api/debug-stats');
+            if (!resp.ok) throw new Error('Falha stats debug ' + resp.status);
+            const json = await resp.json();
+            setStatsDebug(json);
+            console.log('[Debug Stats]', json);
+        } catch (e: any) {
+            setRawError(e.message || 'Erro stats debug');
+        } finally {
+            setLoading(false);
+        }
+    }
+
     useEffect(() => { loadSummary(); }, []);
 
     return (
@@ -80,6 +106,9 @@ export const InventoryDebug: React.FC = () => {
                 </button>
                 <button onClick={loadRawDebug} className="px-2 py-1 text-xs bg-orange-600 text-white rounded flex items-center gap-1">
                     <Database size={12} /> Raw vs Dedupe
+                </button>
+                <button onClick={loadStatsDebug} className="px-2 py-1 text-xs bg-purple-600 text-white rounded flex items-center gap-1">
+                    <Database size={12} /> Stats Vendas
                 </button>
             </div>
             {rawError && (
@@ -138,6 +167,39 @@ export const InventoryDebug: React.FC = () => {
                                 </div>
                             </div>
                         ))}
+                    </div>
+                </div>
+            )}
+            {statsDebug && (
+                <div className="text-xs space-y-2 border-t pt-2">
+                    <div className="font-semibold text-purple-700">📊 Estatísticas de Vendas</div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <div><strong>Total Produtos:</strong> {statsDebug.totalProducts}</div>
+                        <div><strong>Total Registros Histórico:</strong> {statsDebug.totalHistoryRecords}</div>
+                        <div><strong>Média Histórico/Produto:</strong> {statsDebug.avgHistoryPerProduct.toFixed(1)}</div>
+                        <div><strong>Total Datas Únicas:</strong> {statsDebug.totalDates}</div>
+                        <div className="col-span-2"><strong>Total Vendas (Todas):</strong> <span className="text-lg font-bold text-purple-600">{statsDebug.totalSalesAllTime}</span></div>
+                    </div>
+                    <div>
+                        <div className="font-semibold mb-1">Vendas por Data (últimas 10):</div>
+                        <div className="max-h-32 overflow-auto border rounded p-2 bg-gray-50 text-[10px] font-mono">
+                            {Object.entries(statsDebug.salesByDate).slice(-10).map(([date, sales]) => (
+                                <div key={date}>{date}: <strong>{sales}</strong> vendas</div>
+                            ))}
+                        </div>
+                    </div>
+                    <div>
+                        <div className="font-semibold mb-1">Histórico por Produto (primeiros 5):</div>
+                        <div className="max-h-40 overflow-auto border rounded p-2 bg-gray-50 text-[10px]">
+                            {statsDebug.historyStats.slice(0, 5).map((item, idx) => (
+                                <div key={idx} className="border-b pb-1 mb-1">
+                                    <div className="font-semibold">{item.name}</div>
+                                    <div className="text-gray-600">
+                                        {item.historyLength} registros | {item.firstDate} → {item.lastDate}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             )}
