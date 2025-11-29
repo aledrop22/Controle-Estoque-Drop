@@ -485,6 +485,45 @@ const App: React.FC = () => {
         />
       </div>
 
+      {/* Novos SKUs - Logo após os cards */}
+      {newProducts.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
+          <div className="p-4 border-b border-gray-100 bg-emerald-50 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <span className="text-2xl">🆕</span>
+              Novos SKUs Detectados
+            </h3>
+            <span className="px-3 py-1 rounded-full text-sm font-bold bg-emerald-600 text-white">{newProducts.length} novo(s)</span>
+          </div>
+          <div className="p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+              {newProducts.slice(0, 20).map(p => (
+                <div key={`new-${p.id}`} className="p-3 border border-gray-200 rounded-lg hover:border-emerald-400 hover:shadow-md transition-all group">
+                  <div className="flex flex-col gap-2">
+                    {p.url ? (
+                      <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-indigo-700 hover:text-indigo-900 line-clamp-2 group-hover:underline" title={p.name}>
+                        {p.name}
+                      </a>
+                    ) : (
+                      <span className="text-sm font-semibold text-gray-900 line-clamp-2" title={p.name}>{p.name}</span>
+                    )}
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">{p.category}</span>
+                      <span className="font-mono font-bold text-emerald-600">{p.currentStock}</span>
+                    </div>
+                    {p.price > 0 && (
+                      <div className="text-xs text-gray-600 font-semibold">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.price)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Área Principal */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Coluna Esquerda */}
@@ -729,37 +768,6 @@ const App: React.FC = () => {
             <div className="p-2 bg-gray-50 border-t border-gray-100 text-center">
               <span className="text-[10px] text-gray-400 font-medium">Exibindo os top 15</span>
             </div>
-          </div>
-          {/* Novos SKUs */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-800">Novos SKUs</h3>
-              <span className="text-xs text-gray-500">{newProducts.length} novo(s)</span>
-            </div>
-            {newProducts.length > 0 ? (
-              <div className="divide-y divide-gray-50 max-h-[280px] overflow-y-auto">
-                {newProducts.slice(0, 20).map(p => (
-                  <div key={`new-${p.id}`} className="p-3 flex items-center justify-between gap-3 hover:bg-gray-50">
-                    <div className="min-w-0">
-                      {p.url ? (
-                        <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-indigo-700 hover:text-indigo-900 truncate block" title={p.name}>
-                          {p.name}
-                        </a>
-                      ) : (
-                        <span className="text-sm font-medium text-gray-900 truncate block" title={p.name}>{p.name}</span>
-                      )}
-                      <span className="text-[10px] text-gray-400">{p.category}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[10px] text-gray-500 uppercase">Estoque</span>
-                      <div className="font-mono text-sm text-gray-800">{p.currentStock}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-6 text-center text-gray-400 text-sm">Nenhum SKU novo na última data.</div>
-            )}
           </div>
           <StockChart products={products} onPeriodChange={handlePeriodChange} />
         </div>
