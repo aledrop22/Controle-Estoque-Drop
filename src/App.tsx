@@ -507,9 +507,18 @@ const App: React.FC = () => {
                     ) : (
                       <span className="text-sm font-semibold text-gray-900 line-clamp-2" title={p.name}>{p.name}</span>
                     )}
+                    <div className="flex items-center gap-2 text-[11px] text-gray-600">
+                      <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700" title="Dia de entrada">
+                        {(() => {
+                          const raw = p.history?.[0]?.date || p.captureDate || '';
+                          const fmt = raw ? `${raw.slice(8,10)}-${raw.slice(5,7)}-${raw.slice(0,4)}` : 'N/A';
+                          return `Entrada: ${fmt}`;
+                        })()}
+                      </span>
+                    </div>
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-gray-500">{p.category}</span>
-                      <span className="font-mono font-bold text-emerald-600">{p.currentStock}</span>
+                      <span className="font-mono font-bold text-emerald-600" title="Estoque atual">Estoque = {p.currentStock} unid.</span>
                     </div>
                     {p.price > 0 && (
                       <div className="text-xs text-gray-600 font-semibold">
