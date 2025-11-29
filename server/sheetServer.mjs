@@ -235,6 +235,125 @@ app.get('/api/health', (_req, res) => {
     res.json({ ok: true, pid: process.pid });
 });
 
+// Debug: Raw vs Dedupe (alinha com /api/inventory-raw do Vercel)
+app.get('/api/inventory-raw', async (req, res) => {
+    try {
+        if (!jwt) return res.status(500).json({ error: 'Credenciais não configuradas' });
+
+        const rangeBase = SHEET_TAB ? `${SHEET_TAB}!${SHEET_RANGE}` : SHEET_RANGE;
+        await jwt.authorize();
+        const sheets = sheetsApi();
+        const resp = await sheets.spreadsheets.values.get({
+            spreadsheetId: SHEET_ID,
+            range: rangeBase
+        });
+
+        const rows = resp.data.values || [];
+        const headers = rows[0] || [];
+        const dataRows = rows.slice(1);
+
+        const findIdx = (name) => headers.findIndex(h => String(h).toLowerCase().includes(name.toLowerCase()));
+        const idxProduto = findIdx('Produto');
+        const idxData = findIdx('Data da Coleta');
+        const idxEstoque = findIdx('Estoque');
+
+        const productMap = {};
+        dataRows.forEach(r => {
+            const name = r[idxProduto] || 'Sem Nome';
+            if (name === 'Sem Nome' || !name) return;
+            const date = r[idxData] ? String(r[idxData]).split(' ')[0] : '';
+            const stock = parseInt(r[idxEstoque] || '0') || 0;
+            if (!productMap[name]) productMap[name] = [];
+            productMap[name].push({ date, stock });
+        });
+
+        const debugData = Object.keys(productMap).map(name => {
+            const raw = productMap[name];
+            const byDate = new Map();
+            raw.forEach(entry => byDate.set(entry.date, entry));
+            const deduped = Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
+            for (let i = 1; i < deduped.length; i++) {
+                deduped[i].sales24h = Math.max(0, deduped[i - 1].stock - deduped[i].stock);
+            }
+            if (deduped.length > 0) deduped[0].sales24h = 0;
+            return {
+                product: name,
+                rawCount: raw.length,
+                dedupedCount: deduped.length,
+                rawEntries: raw.slice(-5),
+                dedupedEntries: deduped.slice(-5)
+            };
+        });
+
+        return res.json({
+            totalProducts: Object.keys(productMap).length,
+            debugData: debugData.slice(0, 20)
+        });
+    } catch (e) {
+        console.error('Erro /api/inventory-raw:', e);
+        return res.status(500).json({ error: e?.message || 'Erro interno' });
+    }
+});
+
+// Debug: Estatísticas de vendas (alinha com /api/debug-stats do Vercel)
+app.get('/api/debug-stats', async (_req, res) => {
+    try {
+        // Garante que temos produtos no cache
+        if (!cache.data) {
+            // Força uma carga
+            const rangeBase = SHEET_TAB ? `${SHEET_TAB}!${SHEET_RANGE}` : SHEET_RANGE;
+            await jwt?.authorize();
+            const sheets = sheetsApi();
+            const resp = await sheets.spreadsheets.values.get({
+                spreadsheetId: SHEET_ID,
+                range: rangeBase
+            });
+            const rows = resp.data.values || [];
+            cache.data = mapRowsToProducts(rows, null);
+            cache.ts = Date.now();
+        }
+
+        const products = cache.data || [];
+        const stats = {
+            totalProducts: products.length,
+            productsWithHistory: products.filter(p => p.history?.length > 0).length,
+            historyStats: products.map(p => ({
+                name: p.name,
+                historyLength: p.history?.length || 0,
+                firstDate: p.history?.[0]?.date || 'N/A',
+                lastDate: p.history?.[p.history.length - 1]?.date || 'N/A'
+            })),
+            totalHistoryRecords: products.reduce((sum, p) => sum + (p.history?.length || 0), 0),
+            avgHistoryPerProduct: 0
+        };
+        stats.avgHistoryPerProduct = stats.totalHistoryRecords / (stats.totalProducts || 1);
+
+        // Agrega vendas por data (como no StockChart antes do filtro de período)
+        const salesMap = {};
+        products.forEach(p => {
+            const h = p.history || [];
+            for (let i = 0; i < h.length - 1; i++) {
+                const prev = h[i];
+                const curr = h[i + 1];
+                const dateKey = curr.date;
+                const sold = prev.quantity > curr.quantity ? (prev.quantity - curr.quantity) : 0;
+                salesMap[dateKey] = (salesMap[dateKey] || 0) + sold;
+            }
+        });
+
+        const result = {
+            ...stats,
+            salesByDate: salesMap,
+            totalDates: Object.keys(salesMap).length,
+            totalSalesAllTime: Object.values(salesMap).reduce((sum, v) => sum + v, 0)
+        };
+        return res.json(result);
+    } catch (e) {
+        console.error('Erro /api/debug-stats:', e);
+        return res.status(500).json({ error: e?.message || 'Erro interno' });
+    }
+});
+
 // Endpoint para reiniciar os servidores
 app.post('/api/restart', (_req, res) => {
     try {
