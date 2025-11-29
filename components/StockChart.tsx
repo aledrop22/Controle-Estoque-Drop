@@ -18,34 +18,19 @@ interface StockChartProps { products: Product[]; }
 const useDailySales = (products: Product[]) => {
   return useMemo(() => {
     const salesMap: Record<string, number> = {};
-
-    // Debug: Log para entender o que está acontecendo
-    console.log('[StockChart] Processando', products.length, 'produtos');
-
     products.forEach(p => {
       const h = p.history;
-      console.log(`[StockChart] Produto ${p.name}: ${h.length} registros de histórico`);
-
       for (let i = 0; i < h.length - 1; i++) {
         const prev = h[i];
         const curr = h[i + 1];
         const dateKey = curr.date; // Já vem no formato YYYY-MM-DD da API
         const sold = prev.quantity > curr.quantity ? (prev.quantity - curr.quantity) : 0;
-
-        if (sold > 0) {
-          console.log(`  → ${prev.date} (${prev.quantity}) → ${curr.date} (${curr.quantity}): vendeu ${sold}`);
-        }
-
         salesMap[dateKey] = (salesMap[dateKey] || 0) + sold;
       }
     });
-
-    console.log('[StockChart] SalesMap final:', salesMap);
     return salesMap; // { '2025-11-20': 34, ... }
   }, [products]);
-};
-
-export const StockChart: React.FC<StockChartProps> = ({ products }) => {
+}; export const StockChart: React.FC<StockChartProps> = ({ products }) => {
   const dailySalesMap = useDailySales(products);
 
   // Todas as datas disponíveis ordenadas
