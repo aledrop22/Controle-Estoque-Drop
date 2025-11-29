@@ -14,31 +14,17 @@ import { Product } from '../src/types';
 
 interface StockChartProps { products: Product[]; }
 
-// Função para calcular vendas diárias agregadas de todos os produtos
-const useDailySales = (products: Product[]) => {
-  return useMemo(() => {
-    const salesMap: Record<string, number> = {};
-    products.forEach(p => {
-      const h = p.history;
-      for (let i = 0; i < h.length - 1; i++) {
-        const prev = h[i];
-        const curr = h[i + 1];
-        const dateKey = curr.date; // Já vem no formato YYYY-MM-DD da API
-        const sold = prev.quantity > curr.quantity ? (prev.quantity - curr.quantity) : 0;
-        salesMap[dateKey] = (salesMap[dateKey] || 0) + sold;
-      }
-    });
-    return salesMap; // { '2025-11-20': 34, ... }
-  }, [products]);
-}; export const StockChart: React.FC<StockChartProps> = ({ products }) => {
-  const dailySalesMap = useDailySales(products);
-
-  // Todas as datas disponíveis ordenadas
+export const StockChart: React.FC<StockChartProps> = ({ products }) => {
+  // Todas as datas disponíveis no histórico
   const allDates = useMemo(() => {
-    return Object.keys(dailySalesMap).sort();
-  }, [dailySalesMap]);
+    const dateSet = new Set<string>();
+    products.forEach(p => {
+      p.history.forEach(h => dateSet.add(h.date));
+    });
+    return Array.from(dateSet).sort();
+  }, [products]);
 
-  // Padrão: últimos 10 dias para referência
+  // Padrão: últimos 10 dias
   const defaultEnd = allDates[allDates.length - 1] || '';
   const defaultStartIndex = Math.max(0, allDates.length - 11);
   const defaultStart = allDates[defaultStartIndex] || allDates[0] || '';
@@ -47,16 +33,36 @@ const useDailySales = (products: Product[]) => {
   const [refStart, setRefStart] = useState<string>(defaultStart);
   const [refEnd, setRefEnd] = useState<string>(defaultEnd);
 
-  // Filtra datas dentro do intervalo
-  const refDates = useMemo(() => allDates.filter(d => d >= refStart && d <= refEnd), [allDates, refStart, refEnd]);
-
-  // Dataset para o gráfico
+  // Calcula vendas diárias APENAS no período selecionado
   const chartData = useMemo(() => {
-    return refDates.map(date => ({
-      date,
-      vendas: dailySalesMap[date] || 0
-    }));
-  }, [refDates, dailySalesMap]);
+    // Filtra datas dentro do intervalo
+    const periodDates = allDates.filter(d => d >= refStart && d <= refEnd);
+
+    return periodDates.map(currentDate => {
+      let totalSales = 0;
+
+      // Para cada produto, calcula venda nesta data
+      products.forEach(p => {
+        const h = p.history;
+
+        // Encontra o índice da data atual
+        const currentIndex = h.findIndex(entry => entry.date === currentDate);
+        if (currentIndex <= 0) return; // Não há dia anterior
+
+        const prevEntry = h[currentIndex - 1];
+        const currEntry = h[currentIndex];
+
+        // Venda = redução de estoque
+        const sold = Math.max(0, prevEntry.quantity - currEntry.quantity);
+        totalSales += sold;
+      });
+
+      return {
+        date: currentDate,
+        vendas: totalSales
+      };
+    });
+  }, [products, refStart, refEnd, allDates]);
 
   // Máximo para escala Y
   const maxSales = useMemo(() => {
