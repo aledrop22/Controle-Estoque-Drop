@@ -20,7 +20,12 @@ interface StatsDebug {
     historyStats: Array<{ name: string; historyLength: number; firstDate: string; lastDate: string }>;
 }
 
-export const InventoryDebug: React.FC = () => {
+interface InventoryDebugProps {
+    refStart?: string;
+    refEnd?: string;
+}
+
+export const InventoryDebug: React.FC<InventoryDebugProps> = ({ refStart, refEnd }) => {
     const [summary, setSummary] = useState<SummaryResp | null>(null);
     const [rawDebug, setRawDebug] = useState<{ totalProducts: number; debugData: RawDebugData[] } | null>(null);
     const [statsDebug, setStatsDebug] = useState<StatsDebug | null>(null);
@@ -76,7 +81,11 @@ export const InventoryDebug: React.FC = () => {
         setLoading(true);
         setRawError('');
         try {
-            const resp = await fetch('/api/debug-stats');
+            const params = new URLSearchParams();
+            if (refStart) params.append('refStart', refStart);
+            if (refEnd) params.append('refEnd', refEnd);
+            const url = `/api/debug-stats${params.toString() ? '?' + params.toString() : ''}`;
+            const resp = await fetch(url);
             if (!resp.ok) throw new Error('Falha stats debug ' + resp.status);
             const json = await resp.json();
             setStatsDebug(json);
@@ -173,6 +182,7 @@ export const InventoryDebug: React.FC = () => {
             {statsDebug && (
                 <div className="text-xs space-y-2 border-t pt-2">
                     <div className="font-semibold text-purple-700">📊 Estatísticas de Vendas</div>
+                    <div className="text-[10px] text-purple-600 mb-1">Período: {statsDebug.periodStart} a {statsDebug.periodEnd}</div>
                     <div className="grid grid-cols-2 gap-2">
                         <div><strong>Total Produtos:</strong> {statsDebug.totalProducts}</div>
                         <div><strong>Total Registros Histórico:</strong> {statsDebug.totalHistoryRecords}</div>

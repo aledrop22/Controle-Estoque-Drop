@@ -12,9 +12,12 @@ import {
 } from 'recharts';
 import { Product } from '../src/types';
 
-interface StockChartProps { products: Product[]; }
+interface StockChartProps { 
+  products: Product[];
+  onPeriodChange?: (start: string, end: string) => void;
+}
 
-export const StockChart: React.FC<StockChartProps> = ({ products }) => {
+export const StockChart: React.FC<StockChartProps> = ({ products, onPeriodChange }) => {
   // Todas as datas disponíveis no histórico
   const allDates = useMemo(() => {
     const dateSet = new Set<string>();
@@ -32,6 +35,11 @@ export const StockChart: React.FC<StockChartProps> = ({ products }) => {
   // Estado dos intervalos (usuário pode escolher datas via input)
   const [refStart, setRefStart] = useState<string>(defaultStart);
   const [refEnd, setRefEnd] = useState<string>(defaultEnd);
+
+  // Notifica mudança de período
+  useEffect(() => {
+    onPeriodChange?.(refStart, refEnd);
+  }, [refStart, refEnd, onPeriodChange]);
 
   // Calcula vendas diárias APENAS no período selecionado
   const chartData = useMemo(() => {

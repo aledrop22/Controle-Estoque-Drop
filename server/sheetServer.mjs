@@ -296,7 +296,7 @@ app.get('/api/inventory-raw', async (req, res) => {
 });
 
 // Debug: Estatísticas de vendas (alinha com /api/debug-stats do Vercel)
-app.get('/api/debug-stats', async (_req, res) => {
+app.get('/api/debug-stats', async (req, res) => {
     try {
         // Garante que temos produtos no cache
         if (!cache.data) {
@@ -314,6 +314,24 @@ app.get('/api/debug-stats', async (_req, res) => {
         }
 
         const products = cache.data || [];
+        const refStart = req.query.refStart || null;
+        const refEnd = req.query.refEnd || null;
+
+        // Coleta todas as datas únicas disponíveis
+        const allDatesSet = new Set();
+        products.forEach(p => {
+            (p.history || []).forEach(h => allDatesSet.add(h.date));
+        });
+        const allDates = Array.from(allDatesSet).sort();
+
+        // Determina período padrão se não fornecido
+        const defaultEnd = allDates[allDates.length - 1] || '';
+        const defaultStartIndex = Math.max(0, allDates.length - 11);
+        const defaultStart = allDates[defaultStartIndex] || allDates[0] || '';
+
+        const periodStart = refStart || defaultStart;
+        const periodEnd = refEnd || defaultEnd;
+
         const stats = {
             totalProducts: products.length,
             productsWithHistory: products.filter(p => p.history?.length > 0).length,
@@ -324,21 +342,29 @@ app.get('/api/debug-stats', async (_req, res) => {
                 lastDate: p.history?.[p.history.length - 1]?.date || 'N/A'
             })),
             totalHistoryRecords: products.reduce((sum, p) => sum + (p.history?.length || 0), 0),
-            avgHistoryPerProduct: 0
+            avgHistoryPerProduct: 0,
+            periodStart,
+            periodEnd
         };
         stats.avgHistoryPerProduct = stats.totalHistoryRecords / (stats.totalProducts || 1);
 
-        // Agrega vendas por data (como no StockChart antes do filtro de período)
+        // Filtra datas do período
+        const periodDates = allDates.filter(d => d >= periodStart && d <= periodEnd);
+
+        // Calcula vendas APENAS no período (como StockChart corrigido)
         const salesMap = {};
-        products.forEach(p => {
-            const h = p.history || [];
-            for (let i = 0; i < h.length - 1; i++) {
-                const prev = h[i];
-                const curr = h[i + 1];
-                const dateKey = curr.date;
-                const sold = prev.quantity > curr.quantity ? (prev.quantity - curr.quantity) : 0;
-                salesMap[dateKey] = (salesMap[dateKey] || 0) + sold;
-            }
+        periodDates.forEach(currentDate => {
+            let totalSales = 0;
+            products.forEach(p => {
+                const h = p.history || [];
+                const currentIndex = h.findIndex(entry => entry.date === currentDate);
+                if (currentIndex <= 0) return;
+                const prevEntry = h[currentIndex - 1];
+                const currEntry = h[currentIndex];
+                const sold = Math.max(0, prevEntry.quantity - currEntry.quantity);
+                totalSales += sold;
+            });
+            salesMap[currentDate] = totalSales;
         });
 
         const result = {

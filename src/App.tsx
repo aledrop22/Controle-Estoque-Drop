@@ -40,6 +40,7 @@ const App: React.FC = () => {
   const [showDebugPanel, setShowDebugPanel] = useState<boolean>(() => {
     try { return localStorage.getItem('showDebugPanel') === '1'; } catch { return false; }
   });
+  const [chartPeriod, setChartPeriod] = useState<{ start: string; end: string }>({ start: '', end: '' });
 
   // Custom Filter State
   const [customThreshold, setCustomThreshold] = useState<number>(10);
@@ -484,7 +485,7 @@ const App: React.FC = () => {
         {/* Coluna Esquerda */}
         <div className="lg:col-span-2 space-y-6">
           {(showDebugPanel || !autoLoaded || new URLSearchParams(window.location.search).get('debug') === '1') && (
-            <InventoryDebug />
+            <InventoryDebug refStart={chartPeriod.start} refEnd={chartPeriod.end} />
           )}
           <GeminiInsight analysisData={processedData} />
 
@@ -756,7 +757,7 @@ const App: React.FC = () => {
               <div className="p-6 text-center text-gray-400 text-sm">Nenhum SKU novo na última data.</div>
             )}
           </div>
-          <StockChart products={products} />
+          <StockChart products={products} onPeriodChange={(start, end) => setChartPeriod({ start, end })} />
         </div>
       </div>
     </div>
