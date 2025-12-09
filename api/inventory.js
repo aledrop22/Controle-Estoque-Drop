@@ -169,6 +169,11 @@ export default async function handler(req, res) {
         // Cache check
         if (cache.data && (now - cache.ts) < CACHE_TTL_MS && (!effectiveFilterDate || cache.filterDate === effectiveFilterDate)) {
             const products = effectiveFilterDate ? cache.dataFiltered : cache.data;
+            console.log('[DEBUG /api/inventory] Retornando do cache:', {
+                filterDate: effectiveFilterDate || null,
+                productsCount: products.length,
+                sample: products.slice(0, 3)
+            });
             return res.json({ source: 'cache', filterDate: effectiveFilterDate || null, products });
         }
 
@@ -181,6 +186,7 @@ export default async function handler(req, res) {
         });
 
         const rows = resp.data.values || [];
+        console.log('[DEBUG /api/inventory] Cabeçalhos da planilha:', rows[0]);
         const allProducts = mapRowsToProducts(rows, null);
         let filtered = allProducts;
 
@@ -207,6 +213,19 @@ export default async function handler(req, res) {
             filterDate: effectiveFilterDate || null,
             ts: now
         };
+
+        // Loga amostra dos produtos e vendas calculadas
+        console.log('[DEBUG /api/inventory] Produtos retornados:', {
+            filterDate: effectiveFilterDate || null,
+            total: filtered.length,
+            sample: filtered.slice(0, 3).map(p => ({
+                id: p.id,
+                name: p.name,
+                currentStock: p.currentStock,
+                sales24h: p.sales24h,
+                history: p.history
+            }))
+        });
 
         return res.json({ source: 'live', filterDate: effectiveFilterDate || null, products: filtered });
     } catch (e) {

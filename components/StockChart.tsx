@@ -88,7 +88,7 @@ export const StockChart: React.FC<StockChartProps> = ({ products, onPeriodChange
   }, [maxSales]);
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100" style={{ width: '100%' }}>
       <h3 className="text-lg font-semibold text-gray-800 mb-4">Vendas Diárias por Período</h3>
 
       {/* Seletor de período */}
@@ -111,9 +111,9 @@ export const StockChart: React.FC<StockChartProps> = ({ products, onPeriodChange
         </div>
       </div>
 
-      <div className="h-96">
+      <div style={{ width: '100%', height: '450px' }}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 10, right: 40, left: 20, bottom: 10 }}>
+          <LineChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis
               dataKey="date"

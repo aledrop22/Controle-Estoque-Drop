@@ -386,6 +386,15 @@ app.post('/api/restart', (_req, res) => {
         const { spawn } = require('child_process');
         const path = require('path');
 
+        // Log detalhado antes de reiniciar
+        console.log('[Restart] Endpoint chamado: limpando cache e reiniciando backend...');
+        if (typeof cache !== 'undefined') {
+            cache = { data: null, ts: 0 };
+            console.log('[Restart] Cache global limpo com sucesso.');
+        } else {
+            console.log('[Restart] Cache global não encontrado ou já limpo.');
+        }
+
         // Executa o script start.ps1 em segundo plano
         const scriptPath = path.join(__dirname, '..', 'start.ps1');
         const child = spawn('powershell.exe', ['-ExecutionPolicy', 'Bypass', '-File', scriptPath], {
@@ -396,10 +405,11 @@ app.post('/api/restart', (_req, res) => {
 
         child.unref();
 
-        res.json({ ok: true, message: 'Servidores sendo reiniciados...' });
+        res.json({ ok: true, message: 'Servidores sendo reiniciados... Cache limpo.' });
 
         // Aguarda um pouco antes de encerrar este processo
         setTimeout(() => {
+            console.log('[Restart] Processo encerrado após reinício.');
             process.exit(0);
         }, 1000);
     } catch (e) {
