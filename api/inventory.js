@@ -114,7 +114,8 @@ function mapRowsToProducts(rows, dateFilter) {
 
         const historyEntries = hist.rows.slice(-30).map(h => ({
             date: h.date, // Mantém formato YYYY-MM-DD puro
-            quantity: h.stock
+            quantity: h.stock,
+            price: parseFloat(getColumn(h.rawRow, 'Preço') || '0') || 0
         }));
 
         return {

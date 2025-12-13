@@ -127,6 +127,70 @@ const App: React.FC = () => {
     }).slice(0, 10); // Máximo 10 produtos
   }, [products, latestDate]);
 
+  // Ajustes de Preço (últimos 7 dias)
+  const priceAdjustments = useMemo(() => {
+    if (!latestDate) return [] as Array<{
+      id: string;
+      name: string;
+      url?: string;
+      oldPrice: number;
+      newPrice: number;
+      pct: number;
+      direction: 'UP' | 'DOWN';
+    }>;
+
+    const end = new Date(latestDate);
+    const start = new Date(end);
+    start.setDate(end.getDate() - 7);
+    const startStr = start.toISOString().slice(0, 10);
+
+    const list: Array<{
+      id: string;
+      name: string;
+      url?: string;
+      oldPrice: number;
+      newPrice: number;
+      pct: number;
+      direction: 'UP' | 'DOWN';
+    }> = [];
+
+    for (const p of products) {
+      const hist = (p.history || []).slice().sort((a, b) => String(a.date).localeCompare(String(b.date)));
+      // Coleta snapshots dentro da janela de 7 dias (considera datas ISO ou YYYY-MM-DD)
+      const inWindow = hist.filter(h => String(h.date).slice(0, 10) >= startStr);
+
+      // Preço novo: usa o preço atual do produto se válido, senão último da janela
+      const newPrice = Number.isFinite(p.price) && p.price > 0
+        ? p.price
+        : (inWindow.length ? (inWindow[inWindow.length - 1].price || 0) : 0);
+
+      // Preço antigo: primeiro preço válido dentro da janela (ou ignora se 0)
+      let oldPrice = 0;
+      for (const snap of inWindow) {
+        if ((snap.price || 0) > 0) {
+          oldPrice = snap.price as number;
+          break;
+        }
+      }
+
+      if (oldPrice > 0 && newPrice > 0 && newPrice !== oldPrice) {
+        const pct = ((newPrice - oldPrice) / oldPrice) * 100;
+        list.push({
+          id: p.id,
+          name: p.name,
+          url: p.url,
+          oldPrice,
+          newPrice,
+          pct: Math.round(pct * 10) / 10,
+          direction: pct > 0 ? 'UP' : 'DOWN'
+        });
+      }
+    }
+
+    // Ordena por variação absoluta (maior impacto primeiro) e limita
+    return list.sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct)).slice(0, 15);
+  }, [products, latestDate]);
+
   // Process data to calculate derived metrics (Sales, Status)
   const processedData = useMemo(() => {
     const analysis: (ProductAnalysis & { sales7d: number, sales15d: number, sales30d: number })[] = products.map(p => {
@@ -568,6 +632,59 @@ const App: React.FC = () => {
           <div className="p-8 text-center text-gray-400">
             <p className="text-sm">Nenhum produto novo detectado no último dia de coleta.</p>
             <p className="text-xs mt-1">Novos SKUs aparecem quando há primeiro registro na data mais recente.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Ajustes de Preço (últimos 7 dias) */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
+        <div className="p-4 border-b border-gray-100 bg-indigo-50 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+            <span className="text-2xl">💱</span>
+            Ajustes de Preço (7 dias)
+          </h3>
+          <span className="px-3 py-1 rounded-full text-sm font-bold bg-indigo-600 text-white">{priceAdjustments.length}</span>
+        </div>
+        {priceAdjustments.length > 0 ? (
+          <div className="p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+              {priceAdjustments.map((it, idx) => (
+                <div key={`pa-${it.id}`} className="p-3 border rounded-lg hover:shadow-md transition-all bg-white border-gray-200">
+                  <div className="flex items-start justify-between">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">#{idx + 1}</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${it.direction === 'UP' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>{it.direction === 'UP' ? 'Subiu' : 'Baixou'}</span>
+                  </div>
+                  {it.url ? (
+                    <a href={it.url} target="_blank" rel="noopener noreferrer" className="block mt-2 text-sm font-semibold text-indigo-700 hover:text-indigo-900 line-clamp-2 hover:underline" title={it.name}>{it.name}</a>
+                  ) : (
+                    <span className="block mt-2 text-sm font-semibold text-gray-900 line-clamp-2" title={it.name}>{it.name}</span>
+                  )}
+                  <div className="mt-2 text-xs text-gray-600 flex items-center justify-between">
+                    <span className="font-mono">
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(it.oldPrice)}
+                    </span>
+                    <span className="mx-2">→</span>
+                    <span className="font-mono font-semibold">
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(it.newPrice)}
+                    </span>
+                  </div>
+                  <div className="mt-1 text-xs font-bold flex items-center gap-1">
+                    {it.direction === 'UP' ? (
+                      <ArrowUp size={14} className="text-red-600" />
+                    ) : (
+                      <ArrowDown size={14} className="text-emerald-600" />
+                    )}
+                    <span className={it.direction === 'UP' ? 'text-red-700' : 'text-emerald-700'}>
+                      {it.pct > 0 ? '+' : ''}{it.pct}%
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="p-8 text-center text-gray-400">
+            <p className="text-sm">Nenhum ajuste de preço detectado nos últimos 7 dias.</p>
           </div>
         )}
       </div>

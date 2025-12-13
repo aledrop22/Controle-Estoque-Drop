@@ -2,6 +2,7 @@
 export interface DailySnapshot {
   date: string;
   quantity: number;
+  price?: number;
 }
 
 export interface Product {

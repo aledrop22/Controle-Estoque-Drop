@@ -128,7 +128,8 @@ function mapRowsToProducts(rows, dateFilter) {
         // Monta histórico completo deste produto (últimos 30 dias ou todos disponíveis)
         const historyEntries = hist.rows.slice(-30).map(h => ({
             date: new Date(h.date + 'T12:00:00Z').toISOString(),
-            quantity: h.stock
+            quantity: h.stock,
+            price: parseFloat(getColumn(h.rawRow, 'Preço') || '0') || 0
         }));
 
         return {
