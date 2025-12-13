@@ -137,6 +137,8 @@ const App: React.FC = () => {
       newPrice: number;
       pct: number;
       direction: 'UP' | 'DOWN';
+      changeDate: string;
+      currentStock: number;
     }>;
 
     const end = new Date(latestDate);
@@ -152,6 +154,8 @@ const App: React.FC = () => {
       newPrice: number;
       pct: number;
       direction: 'UP' | 'DOWN';
+      changeDate: string;
+      currentStock: number;
     }> = [];
 
     for (const p of products) {
@@ -166,9 +170,11 @@ const App: React.FC = () => {
 
       // Preço antigo: primeiro preço válido dentro da janela (ou ignora se 0)
       let oldPrice = 0;
+      let oldPriceDate = '';
       for (const snap of inWindow) {
         if ((snap.price || 0) > 0) {
           oldPrice = snap.price as number;
+          oldPriceDate = String(snap.date).slice(0, 10);
           break;
         }
       }
@@ -182,7 +188,9 @@ const App: React.FC = () => {
           oldPrice,
           newPrice,
           pct: Math.round(pct * 10) / 10,
-          direction: pct > 0 ? 'UP' : 'DOWN'
+          direction: pct > 0 ? 'UP' : 'DOWN',
+          changeDate: oldPriceDate || String(end.toISOString().slice(0, 10)),
+          currentStock: p.currentStock
         });
       }
     }
@@ -636,14 +644,14 @@ const App: React.FC = () => {
         )}
       </div>
 
-      {/* Ajustes de Preço (últimos 7 dias) */}
+      {/* Alteração de Preço (últimos 7 dias) */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
         <div className="p-4 border-b border-gray-100 bg-indigo-50 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
             <span className="text-2xl">💱</span>
-            Ajustes de Preço (7 dias)
+            Alteração de Preço (7 dias)
           </h3>
-          <span className="px-3 py-1 rounded-full text-sm font-bold bg-indigo-600 text-white">{priceAdjustments.length}</span>
+          <span className="px-3 py-1 rounded-full text-sm font-bold bg-indigo-600 text-white">{priceAdjustments.length} novos</span>
         </div>
         {priceAdjustments.length > 0 ? (
           <div className="p-4">
@@ -651,8 +659,13 @@ const App: React.FC = () => {
               {priceAdjustments.map((it, idx) => (
                 <div key={`pa-${it.id}`} className="p-3 border rounded-lg hover:shadow-md transition-all bg-white border-gray-200">
                   <div className="flex items-start justify-between">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">#{idx + 1}</span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${it.direction === 'UP' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>{it.direction === 'UP' ? 'Subiu' : 'Baixou'}</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${it.direction === 'UP' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>#{idx + 1} • {it.direction === 'UP' ? 'Subiu' : 'Baixou'}</span>
+                    <span className="text-[10px] text-gray-500">
+                      {(() => {
+                        const raw = it.changeDate || '';
+                        return raw ? `${raw.slice(8, 10)}-${raw.slice(5, 7)}-${raw.slice(0, 4)}` : '—';
+                      })()}
+                    </span>
                   </div>
                   {it.url ? (
                     <a href={it.url} target="_blank" rel="noopener noreferrer" className="block mt-2 text-sm font-semibold text-indigo-700 hover:text-indigo-900 line-clamp-2 hover:underline" title={it.name}>{it.name}</a>
@@ -677,6 +690,7 @@ const App: React.FC = () => {
                     <span className={it.direction === 'UP' ? 'text-red-700' : 'text-emerald-700'}>
                       {it.pct > 0 ? '+' : ''}{it.pct}%
                     </span>
+                    <span className="ml-auto text-[11px] text-gray-600 font-mono font-semibold" title="Estoque atual">Estoque = {it.currentStock} unid.</span>
                   </div>
                 </div>
               ))}
@@ -684,7 +698,7 @@ const App: React.FC = () => {
           </div>
         ) : (
           <div className="p-8 text-center text-gray-400">
-            <p className="text-sm">Nenhum ajuste de preço detectado nos últimos 7 dias.</p>
+            <p className="text-sm">Nenhuma alteração de preço detectada nos últimos 7 dias.</p>
           </div>
         )}
       </div>
