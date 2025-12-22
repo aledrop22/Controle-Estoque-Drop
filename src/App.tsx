@@ -592,14 +592,34 @@ const App: React.FC = () => {
                 const badgeColor = isZero ? 'bg-red-600 text-white' : isOne ? 'bg-orange-600 text-white' : 'bg-yellow-600 text-white';
                 const icon = isZero ? '🔴' : isOne ? '🟠' : '🟡';
 
+                // Calcular dias desde que zerou (para produtos zerados)
+                let daysSinceZero: number | null = null;
+                if (isZero) {
+                  const history = product.history || [];
+                  if (history.length >= 2) {
+                    let firstZeroDate: string | null = null;
+                    for (let i = 0; i < history.length; i++) {
+                      if (history[i].quantity === 0) {
+                        firstZeroDate = history[i].date;
+                        break;
+                      }
+                    }
+                    if (firstZeroDate) {
+                      const zeroDateTime = new Date(firstZeroDate).getTime();
+                      const today = new Date().getTime();
+                      daysSinceZero = Math.floor((today - zeroDateTime) / (1000 * 60 * 60 * 24));
+                    }
+                  }
+                }
+
                 return (
                   <div key={`alert-${product.id}`} className={`p-3 rounded-lg border-2 ${bgColor} ${textColor} shadow-sm hover:shadow-md transition-all`}>
                     <div className="flex items-start justify-between mb-2">
                       <span className={`px-2 py-1 rounded-full text-xs font-black ${badgeColor} flex items-center gap-1`}>
-                        {icon} {isZero ? 'ZERADO' : `${product.currentStock} UNID`}
+                        {icon} {isZero ? (daysSinceZero !== null && daysSinceZero >= 1 ? `${daysSinceZero} DIA${daysSinceZero > 1 ? 'S' : ''} ACABOU` : 'ZERADO') : `${product.currentStock} UNID`}
                       </span>
-                      {isZero && (
-                        <span className="text-xs font-bold">❗</span>
+                      {isZero && daysSinceZero !== null && daysSinceZero >= 1 && daysSinceZero <= 3 && (
+                        <span className="text-xs font-bold">⏰</span>
                       )}
                     </div>
                     {product.url ? (
