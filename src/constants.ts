@@ -65,10 +65,55 @@ export const generateHistory = (currentStock: number, volatility: 'HIGH' | 'LOW'
 const CATEGORIES = ['Eletrônicos', 'Móveis', 'Acessórios', 'Periféricos', 'Casa', 'Escritório', 'Gamer', 'Rede'];
 
 const MOCK_PRODUCTS_BASE: Partial<Product>[] = [
-  // � PRODUTOS DE DEMONSTRAÇÃO - CONTAGEM DE DIAS QUE ACABOU
-  { id: 'DEMO-ZERO-1', name: '⏰ Produto Zerou há 1 dia', category: 'Demo', price: 100.00, currentStock: 0, minStockThreshold: 10 },
-  { id: 'DEMO-ZERO-2', name: '⏰ Produto Zerou há 2 dias', category: 'Demo', price: 200.00, currentStock: 0, minStockThreshold: 10 },
-  { id: 'DEMO-ZERO-3', name: '⏰ Produto Zerou há 3 dias', category: 'Demo', price: 300.00, currentStock: 0, minStockThreshold: 10 },
+  // 📅 PRODUTOS DE DEMONSTRAÇÃO - CONTAGEM DE DIAS QUE ACABOU
+  {
+    id: 'DEMO-ZERO-1',
+    name: '⏰ DEMO Zerou há 1 dia',
+    category: 'Demo',
+    price: 100.00,
+    currentStock: 0,
+    minStockThreshold: 10,
+    history: [
+      { date: getPastDate(5), quantity: 5 },
+      { date: getPastDate(4), quantity: 3 },
+      { date: getPastDate(3), quantity: 2 },
+      { date: getPastDate(2), quantity: 1 },
+      { date: getPastDate(1), quantity: 0 }, // ZEROU HÁ 1 DIA
+      { date: getPastDate(0), quantity: 0 }  // HOJE
+    ]
+  },
+  {
+    id: 'DEMO-ZERO-2',
+    name: '⏰ DEMO Zerou há 2 dias',
+    category: 'Demo',
+    price: 200.00,
+    currentStock: 0,
+    minStockThreshold: 10,
+    history: [
+      { date: getPastDate(5), quantity: 7 },
+      { date: getPastDate(4), quantity: 4 },
+      { date: getPastDate(3), quantity: 1 },
+      { date: getPastDate(2), quantity: 0 }, // ZEROU HÁ 2 DIAS
+      { date: getPastDate(1), quantity: 0 },
+      { date: getPastDate(0), quantity: 0 }  // HOJE
+    ]
+  },
+  {
+    id: 'DEMO-ZERO-3',
+    name: '⏰ DEMO Zerou há 3 dias',
+    category: 'Demo',
+    price: 300.00,
+    currentStock: 0,
+    minStockThreshold: 10,
+    history: [
+      { date: getPastDate(5), quantity: 6 },
+      { date: getPastDate(4), quantity: 2 },
+      { date: getPastDate(3), quantity: 0 }, // ZEROU HÁ 3 DIAS
+      { date: getPastDate(2), quantity: 0 },
+      { date: getPastDate(1), quantity: 0 },
+      { date: getPastDate(0), quantity: 0 }  // HOJE
+    ]
+  },
 
   // PRODUTOS NORMAIS
   { id: 'PROD-001', name: 'Fone de Ouvido Bluetooth Pro', category: 'Eletrônicos', price: 150.00, currentStock: 8, minStockThreshold: 10 },
@@ -99,15 +144,9 @@ const MOCK_PRODUCTS_BASE: Partial<Product>[] = [
 ];
 
 export const MOCK_DATA: Product[] = MOCK_PRODUCTS_BASE.map(p => {
-  // Produtos com histórico customizado de zeramento
-  if (p.id === 'DEMO-ZERO-1') {
-    return { ...p, history: generateZeroHistory(1) } as Product; // Zerou há 1 dia
-  }
-  if (p.id === 'DEMO-ZERO-2') {
-    return { ...p, history: generateZeroHistory(2) } as Product; // Zerou há 2 dias
-  }
-  if (p.id === 'DEMO-ZERO-3') {
-    return { ...p, history: generateZeroHistory(3) } as Product; // Zerou há 3 dias
+  // Produtos que já têm histórico definido (DEMO-ZERO)
+  if (p.history) {
+    return p as Product;
   }
 
   // Produtos normais
