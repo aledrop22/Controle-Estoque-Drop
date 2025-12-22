@@ -65,19 +65,11 @@ export const generateHistory = (currentStock: number, volatility: 'HIGH' | 'LOW'
 const CATEGORIES = ['Eletrônicos', 'Móveis', 'Acessórios', 'Periféricos', 'Casa', 'Escritório', 'Gamer', 'Rede'];
 
 const MOCK_PRODUCTS_BASE: Partial<Product>[] = [
-  // 🚨 PRODUTOS PARA DEMONSTRAÇÃO DO BANNER DE ALERTA (ESTOQUE BAIXO)
-  { id: 'DEMO-001', name: '🔴 Mouse Gamer RGB Ultimate (ZERADO)', category: 'Periféricos', price: 199.90, currentStock: 0, minStockThreshold: 10, url: 'https://exemplo.com/mouse' },
-  { id: 'DEMO-002', name: '🔴 Teclado Mecânico Pro RGB (ZERADO)', category: 'Periféricos', price: 459.00, currentStock: 0, minStockThreshold: 10, url: 'https://exemplo.com/teclado' },
+  // � PRODUTOS DE DEMONSTRAÇÃO - CONTAGEM DE DIAS QUE ACABOU
+  { id: 'DEMO-ZERO-1', name: '⏰ Produto Zerou há 1 dia', category: 'Demo', price: 100.00, currentStock: 0, minStockThreshold: 10 },
+  { id: 'DEMO-ZERO-2', name: '⏰ Produto Zerou há 2 dias', category: 'Demo', price: 200.00, currentStock: 0, minStockThreshold: 10 },
+  { id: 'DEMO-ZERO-3', name: '⏰ Produto Zerou há 3 dias', category: 'Demo', price: 300.00, currentStock: 0, minStockThreshold: 10 },
 
-  // 📅 PRODUTOS ZERADOS COM CONTAGEM DE DIAS
-  { id: 'DEMO-ZERO-1', name: '📦 Webcam 4K Pro - Zerou ontem', category: 'Periféricos', price: 349.90, currentStock: 0, minStockThreshold: 10, url: 'https://exemplo.com/webcam' },
-  { id: 'DEMO-ZERO-2', name: '📦 Microfone Profissional - Zerou há 2 dias', category: 'Periféricos', price: 489.00, currentStock: 0, minStockThreshold: 10 },
-  { id: 'DEMO-ZERO-3', name: '📦 Mesa Digitalizadora XL - Zerou há 3 dias', category: 'Eletrônicos', price: 799.00, currentStock: 0, minStockThreshold: 5, url: 'https://exemplo.com/mesa' },
-
-  { id: 'DEMO-003', name: '🟠 Headset Gamer Wireless Premium (1 UNIDADE)', category: 'Gamer', price: 599.00, currentStock: 1, minStockThreshold: 10, url: 'https://exemplo.com/headset' },
-  { id: 'DEMO-004', name: '🟠 Monitor 144Hz 27" Curvo (1 UNIDADE)', category: 'Eletrônicos', price: 1299.00, currentStock: 1, minStockThreshold: 5 },
-  { id: 'DEMO-005', name: '🟡 Cadeira Gamer Premium RGB (2 UNIDADES)', category: 'Móveis', price: 1499.00, currentStock: 2, minStockThreshold: 5, url: 'https://exemplo.com/cadeira' },
-  { id: 'DEMO-006', name: '🟡 SSD NVMe 2TB Gen4 (2 UNIDADES)', category: 'Eletrônicos', price: 899.00, currentStock: 2, minStockThreshold: 10 },
   // PRODUTOS NORMAIS
   { id: 'PROD-001', name: 'Fone de Ouvido Bluetooth Pro', category: 'Eletrônicos', price: 150.00, currentStock: 8, minStockThreshold: 10 },
   { id: 'PROD-002', name: 'Cadeira Gamer Ergonomic', category: 'Móveis', price: 850.00, currentStock: 45, minStockThreshold: 5 },
