@@ -7,6 +7,31 @@ const getPastDate = (daysAgo: number): string => {
   return date.toISOString().split('T')[0];
 };
 
+// Helper para gerar histórico customizado com data específica de zeramento
+const generateZeroHistory = (daysAgoZeroed: number): { date: string, quantity: number }[] => {
+  const history = [];
+
+  // Hoje: estoque 0
+  history.push({ date: getPastDate(0), quantity: 0 });
+
+  // Dias desde que zerou até hoje: mantém 0
+  for (let i = 1; i < daysAgoZeroed; i++) {
+    history.push({ date: getPastDate(i), quantity: 0 });
+  }
+
+  // Dia que zerou: ainda tinha 1
+  history.push({ date: getPastDate(daysAgoZeroed), quantity: 1 });
+
+  // Antes de zerar: tinha estoque normal
+  let stock = 5;
+  for (let i = daysAgoZeroed + 1; i <= 30; i++) {
+    stock += Math.floor(Math.random() * 3);
+    history.push({ date: getPastDate(i), quantity: stock });
+  }
+
+  return history.reverse();
+};
+
 export const generateHistory = (currentStock: number, volatility: 'HIGH' | 'LOW' | 'STABLE'): { date: string, quantity: number }[] => {
   const history = [];
   let quantity = currentStock;
@@ -40,6 +65,12 @@ const MOCK_PRODUCTS_BASE: Partial<Product>[] = [
   // 🚨 PRODUTOS PARA DEMONSTRAÇÃO DO BANNER DE ALERTA (ESTOQUE BAIXO)
   { id: 'DEMO-001', name: '🔴 Mouse Gamer RGB Ultimate (ZERADO)', category: 'Periféricos', price: 199.90, currentStock: 0, minStockThreshold: 10, url: 'https://exemplo.com/mouse' },
   { id: 'DEMO-002', name: '🔴 Teclado Mecânico Pro RGB (ZERADO)', category: 'Periféricos', price: 459.00, currentStock: 0, minStockThreshold: 10, url: 'https://exemplo.com/teclado' },
+
+  // 📅 PRODUTOS ZERADOS COM CONTAGEM DE DIAS
+  { id: 'DEMO-ZERO-1', name: '📦 Webcam 4K Pro - Zerou ontem', category: 'Periféricos', price: 349.90, currentStock: 0, minStockThreshold: 10, url: 'https://exemplo.com/webcam' },
+  { id: 'DEMO-ZERO-2', name: '📦 Microfone Profissional - Zerou há 2 dias', category: 'Periféricos', price: 489.00, currentStock: 0, minStockThreshold: 10 },
+  { id: 'DEMO-ZERO-3', name: '📦 Mesa Digitalizadora XL - Zerou há 3 dias', category: 'Eletrônicos', price: 799.00, currentStock: 0, minStockThreshold: 5, url: 'https://exemplo.com/mesa' },
+
   { id: 'DEMO-003', name: '🟠 Headset Gamer Wireless Premium (1 UNIDADE)', category: 'Gamer', price: 599.00, currentStock: 1, minStockThreshold: 10, url: 'https://exemplo.com/headset' },
   { id: 'DEMO-004', name: '🟠 Monitor 144Hz 27" Curvo (1 UNIDADE)', category: 'Eletrônicos', price: 1299.00, currentStock: 1, minStockThreshold: 5 },
   { id: 'DEMO-005', name: '🟡 Cadeira Gamer Premium RGB (2 UNIDADES)', category: 'Móveis', price: 1499.00, currentStock: 2, minStockThreshold: 5, url: 'https://exemplo.com/cadeira' },
@@ -73,6 +104,18 @@ const MOCK_PRODUCTS_BASE: Partial<Product>[] = [
 ];
 
 export const MOCK_DATA: Product[] = MOCK_PRODUCTS_BASE.map(p => {
+  // Produtos com histórico customizado de zeramento
+  if (p.id === 'DEMO-ZERO-1') {
+    return { ...p, history: generateZeroHistory(1) } as Product; // Zerou há 1 dia
+  }
+  if (p.id === 'DEMO-ZERO-2') {
+    return { ...p, history: generateZeroHistory(2) } as Product; // Zerou há 2 dias
+  }
+  if (p.id === 'DEMO-ZERO-3') {
+    return { ...p, history: generateZeroHistory(3) } as Product; // Zerou há 3 dias
+  }
+
+  // Produtos normais
   const volatility = p.currentStock! < 20 ? 'HIGH' : 'LOW';
   return {
     ...p,

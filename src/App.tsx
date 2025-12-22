@@ -916,6 +916,28 @@ const App: React.FC = () => {
                     const analysis = processedData.find(a => a.productId === product.id);
                     const isLow = product.currentStock <= customThreshold;
                     const sales = analysis?.salesLast24h || 0;
+
+                    // Calcular dias desde que zerou
+                    let daysSinceZero: number | null = null;
+                    if (product.currentStock === 0) {
+                      const history = product.history || [];
+                      if (history.length >= 2) {
+                        let zeroDate: string | null = null;
+                        for (let i = history.length - 1; i >= 0; i--) {
+                          if (history[i].quantity === 0) {
+                            zeroDate = history[i].date;
+                          } else {
+                            break;
+                          }
+                        }
+                        if (zeroDate) {
+                          const zeroDateTime = new Date(zeroDate).getTime();
+                          const today = new Date().getTime();
+                          daysSinceZero = Math.floor((today - zeroDateTime) / (1000 * 60 * 60 * 24));
+                        }
+                      }
+                    }
+
                     return (
                       <tr key={product.id} className="hover:bg-gray-50 transition-colors group">
                         <td className="p-4 text-center">
@@ -939,6 +961,11 @@ const App: React.FC = () => {
                             {newProducts.some(np => np.id === product.id) && (
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700" title="Produto novo no último dia">
                                 Novo
+                              </span>
+                            )}
+                            {daysSinceZero !== null && daysSinceZero >= 1 && daysSinceZero <= 3 && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-600 text-white animate-pulse" title={`Produto zerou há ${daysSinceZero} dia(s)`}>
+                                {daysSinceZero} dia{daysSinceZero > 1 ? 's' : ''} que acabou
                               </span>
                             )}
                           </div>
