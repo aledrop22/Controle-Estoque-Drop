@@ -297,9 +297,20 @@ const App: React.FC = () => {
       : <ArrowDown size={14} className="text-indigo-600 ml-1 inline" />;
   };
 
+  // Produtos com estoque baixo (≤ 2) - para banner de alerta
+  const lowStockAlertProducts = useMemo(() => {
+    return products
+      .filter(p => p.currentStock > 0 && p.currentStock <= 2)
+      .sort((a, b) => a.currentStock - b.currentStock) // Ordena: menor estoque primeiro
+      .slice(0, 20); // Máximo 20 produtos no alerta
+  }, [products]);
+
   // Filtering and Sorting logic for the table
   const tableData = useMemo(() => {
     let data = [...products];
+
+    // 0. Remover produtos zerados da lista principal (aparecem apenas no alerta)
+    data = data.filter(p => p.currentStock > 0);
 
     // 1. Text Search
     if (searchTerm) {
@@ -521,6 +532,96 @@ const App: React.FC = () => {
               <span>{autoLoadError}</span>
             </div>
           )}
+        </div>
+      )}
+
+      {/* 🚨 BANNER DE ALERTA: Estoque Baixo (≤ 2 unidades) */}
+      {lowStockAlertProducts.length > 0 && (
+        <div className="mb-6 bg-gradient-to-r from-red-50 via-orange-50 to-yellow-50 border-2 border-red-300 rounded-xl shadow-lg overflow-hidden animate-pulse">
+          <div className="p-4 bg-red-600 text-white flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AlertTriangle size={28} className="animate-bounce" />
+              <div>
+                <h3 className="text-xl font-bold">⚠️ ALERTA: Estoque Crítico</h3>
+                <p className="text-sm text-red-100">
+                  {lowStockAlertProducts.filter(p => p.currentStock === 0).length > 0 && `${lowStockAlertProducts.filter(p => p.currentStock === 0).length} ZERADO(S) • `}
+                  {lowStockAlertProducts.length} produto(s) com ≤ 2 unidades
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setStatusFilter('LOW_CRITICAL')}
+              className="px-4 py-2 bg-white text-red-600 rounded-lg font-bold hover:bg-red-50 transition-colors"
+            >
+              Ver na Tabela
+            </button>
+          </div>
+          <div className="p-4 max-h-96 overflow-y-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {lowStockAlertProducts.map((product) => {
+                const isZero = product.currentStock === 0;
+                const isOne = product.currentStock === 1;
+                const bgColor = isZero ? 'bg-red-100 border-red-400' : isOne ? 'bg-orange-100 border-orange-400' : 'bg-yellow-100 border-yellow-400';
+                const textColor = isZero ? 'text-red-900' : isOne ? 'text-orange-900' : 'text-yellow-900';
+                const badgeColor = isZero ? 'bg-red-600 text-white' : isOne ? 'bg-orange-600 text-white' : 'bg-yellow-600 text-white';
+                const icon = isZero ? '🔴' : isOne ? '🟠' : '🟡';
+
+                return (
+                  <div key={`alert-${product.id}`} className={`p-3 rounded-lg border-2 ${bgColor} ${textColor} shadow-sm hover:shadow-md transition-all`}>
+                    <div className="flex items-start justify-between mb-2">
+                      <span className={`px-2 py-1 rounded-full text-xs font-black ${badgeColor} flex items-center gap-1`}>
+                        {icon} {isZero ? 'ZERADO' : `${product.currentStock} UNID`}
+                      </span>
+                      {isZero && (
+                        <span className="text-xs font-bold animate-pulse">❗</span>
+                      )}
+                    </div>
+                    {product.url ? (
+                      <a
+                        href={product.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`block font-bold text-sm hover:underline line-clamp-2 mb-2 ${textColor}`}
+                        title={product.name}
+                      >
+                        {product.name}
+                      </a>
+                    ) : (
+                      <p className="font-bold text-sm line-clamp-2 mb-2" title={product.name}>
+                        {product.name}
+                      </p>
+                    )}
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="opacity-75">{product.category}</span>
+                      {product.price > 0 && (
+                        <span className="font-mono font-bold">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price)}
+                        </span>
+                      )}
+                    </div>
+                    {(() => {
+                      const analysis = processedData.find(a => a.productId === product.id);
+                      const sales = analysis?.salesLast24h || 0;
+                      if (sales > 0) {
+                        return (
+                          <div className="mt-2 pt-2 border-t border-current opacity-60 text-xs font-semibold flex items-center gap-1">
+                            <TrendingDown size={12} />
+                            <span>{sales} vendido(s) em 24h</span>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="px-4 py-2 bg-red-100 border-t border-red-200 text-center">
+            <p className="text-xs text-red-700 font-semibold">
+              💡 Produtos zerados foram removidos da tabela principal e aparecem apenas aqui
+            </p>
+          </div>
         </div>
       )}
 
