@@ -3,6 +3,13 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "=== Iniciando Backend API (Porta 4000) ===" -ForegroundColor Cyan
 
+# Verifica npm disponível
+$npmCmd = Get-Command npm.cmd -ErrorAction SilentlyContinue
+if (-not $npmCmd) {
+    Write-Host "npm não encontrado. Instale NVM (Windows) e Node 22 LTS, reinicie o terminal e tente novamente." -ForegroundColor Red
+    exit 1
+}
+
 # Mata processos na porta 4000 se existirem
 $port4000 = Get-NetTCPConnection -LocalPort 4000 -ErrorAction SilentlyContinue
 if ($port4000) {
@@ -14,5 +21,6 @@ if ($port4000) {
 
 # Inicia o servidor
 Write-Host "Iniciando servidor backend (oculto)..." -ForegroundColor Green
-$proc = Start-Process -FilePath "node" -ArgumentList "server/sheetServer.mjs" -WorkingDirectory $PSScriptRoot -WindowStyle Hidden -PassThru
+# Executa via npm para evitar dependência do PATH do Node
+$proc = Start-Process -FilePath "npm.cmd" -ArgumentList @("run", "api") -WorkingDirectory $PSScriptRoot -WindowStyle Hidden -PassThru
 Write-Host "Backend PID: $($proc.Id)" -ForegroundColor DarkGray

@@ -3,6 +3,13 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "=== Iniciando Frontend Vite (Porta 3000) ===" -ForegroundColor Cyan
 
+# Verifica npm disponível
+$npmCmd = Get-Command npm.cmd -ErrorAction SilentlyContinue
+if (-not $npmCmd) {
+    Write-Host "npm não encontrado. Instale NVM (Windows) e Node 22 LTS, reinicie o terminal e tente novamente." -ForegroundColor Red
+    exit 1
+}
+
 # Mata processos na porta 3000 se existirem
 $port3000 = Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue
 if ($port3000) {
