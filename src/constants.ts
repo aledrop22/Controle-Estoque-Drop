@@ -19,12 +19,15 @@ const generateZeroHistory = (daysAgoZeroed: number): { date: string, quantity: n
     history.push({ date: getPastDate(i), quantity: 0 });
   }
 
-  // Dia que zerou: ainda tinha 1
-  history.push({ date: getPastDate(daysAgoZeroed), quantity: 1 });
+  // Dia que zerou: primeira vez com 0
+  history.push({ date: getPastDate(daysAgoZeroed), quantity: 0 });
+
+  // Dia antes de zerar: ainda tinha 1
+  history.push({ date: getPastDate(daysAgoZeroed + 1), quantity: 1 });
 
   // Antes de zerar: tinha estoque normal
   let stock = 5;
-  for (let i = daysAgoZeroed + 1; i <= 30; i++) {
+  for (let i = daysAgoZeroed + 2; i <= 30; i++) {
     stock += Math.floor(Math.random() * 3);
     history.push({ date: getPastDate(i), quantity: stock });
   }
