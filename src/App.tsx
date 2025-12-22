@@ -309,8 +309,34 @@ const App: React.FC = () => {
   const tableData = useMemo(() => {
     let data = [...products];
 
-    // 0. Remover produtos zerados da lista principal (aparecem apenas no alerta)
-    data = data.filter(p => p.currentStock > 0);
+    // 0. Remover produtos zerados após 3 dias
+    // Produtos zerados aparecem na lista por 3 dias, depois são removidos
+    data = data.filter(p => {
+      if (p.currentStock > 0) return true; // Produtos com estoque sempre aparecem
+
+      // Para produtos zerados, verificar quando zeraram
+      const history = p.history || [];
+      if (history.length < 2) return true; // Se não tem histórico, manter
+
+      // Encontrar quando o produto zerou
+      let zeroDate: string | null = null;
+      for (let i = history.length - 1; i >= 0; i--) {
+        if (history[i].quantity === 0) {
+          zeroDate = history[i].date;
+        } else {
+          break; // Parar no primeiro registro não-zero de trás pra frente
+        }
+      }
+
+      if (!zeroDate) return true; // Se não encontrou quando zerou, manter
+
+      // Calcular dias desde que zerou
+      const zeroDateTime = new Date(zeroDate).getTime();
+      const today = new Date().getTime();
+      const daysSinceZero = Math.floor((today - zeroDateTime) / (1000 * 60 * 60 * 24));
+
+      return daysSinceZero <= 3; // Manter por 3 dias
+    });
 
     // 1. Text Search
     if (searchTerm) {
@@ -537,12 +563,12 @@ const App: React.FC = () => {
 
       {/* 🚨 BANNER DE ALERTA: Estoque Baixo (≤ 2 unidades) */}
       {lowStockAlertProducts.length > 0 && (
-        <div className="mb-6 bg-gradient-to-r from-red-50 via-orange-50 to-yellow-50 border-2 border-red-300 rounded-xl shadow-lg overflow-hidden animate-pulse">
+        <div className="mb-6 bg-gradient-to-r from-red-50 via-orange-50 to-yellow-50 border-2 border-red-300 rounded-xl shadow-lg overflow-hidden">
           <div className="p-4 bg-red-600 text-white flex items-center justify-between">
             <div className="flex items-center gap-3">
               <AlertTriangle size={28} className="animate-bounce" />
               <div>
-                <h3 className="text-xl font-bold">⚠️ ALERTA: Estoque Crítico</h3>
+                <h3 className="text-xl font-bold animate-pulse">⚠️ ALERTA: Estoque Crítico</h3>
                 <p className="text-sm text-red-100">
                   {lowStockAlertProducts.filter(p => p.currentStock === 0).length > 0 && `${lowStockAlertProducts.filter(p => p.currentStock === 0).length} ZERADO(S) • `}
                   {lowStockAlertProducts.length} produto(s) com ≤ 2 unidades
@@ -573,7 +599,7 @@ const App: React.FC = () => {
                         {icon} {isZero ? 'ZERADO' : `${product.currentStock} UNID`}
                       </span>
                       {isZero && (
-                        <span className="text-xs font-bold animate-pulse">❗</span>
+                        <span className="text-xs font-bold">❗</span>
                       )}
                     </div>
                     {product.url ? (
