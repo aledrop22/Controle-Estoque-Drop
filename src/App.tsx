@@ -441,10 +441,7 @@ const App: React.FC = () => {
       if (!resp.ok) throw new Error(`Falha ao consultar ${url} (status ${resp.status})`);
       const json = await resp.json();
       if (Array.isArray(json.products) && json.products.length > 0) {
-        // Adicionar produtos de demonstração aos dados da API
-        const demoProdutos = MOCK_DATA.filter(p => p.id.startsWith('DEMO-'));
-        const produtosComDemo = [...demoProdutos, ...json.products];
-        setProducts(produtosComDemo as Product[]);
+        setProducts(json.products as Product[]);
         setFilterDate(json.filterDate || null);
         setAutoLoaded(true);
         setAutoLoadError('');

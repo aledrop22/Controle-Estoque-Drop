@@ -7,34 +7,6 @@ const getPastDate = (daysAgo: number): string => {
   return date.toISOString().split('T')[0];
 };
 
-// Helper para gerar histórico customizado com data específica de zeramento
-const generateZeroHistory = (daysAgoZeroed: number): { date: string, quantity: number }[] => {
-  const history = [];
-
-  // Hoje: estoque 0
-  history.push({ date: getPastDate(0), quantity: 0 });
-
-  // Dias desde que zerou até hoje: mantém 0
-  for (let i = 1; i < daysAgoZeroed; i++) {
-    history.push({ date: getPastDate(i), quantity: 0 });
-  }
-
-  // Dia que zerou: primeira vez com 0
-  history.push({ date: getPastDate(daysAgoZeroed), quantity: 0 });
-
-  // Dia antes de zerar: ainda tinha 1
-  history.push({ date: getPastDate(daysAgoZeroed + 1), quantity: 1 });
-
-  // Antes de zerar: tinha estoque normal
-  let stock = 5;
-  for (let i = daysAgoZeroed + 2; i <= 30; i++) {
-    stock += Math.floor(Math.random() * 3);
-    history.push({ date: getPastDate(i), quantity: stock });
-  }
-
-  return history.reverse();
-};
-
 export const generateHistory = (currentStock: number, volatility: 'HIGH' | 'LOW' | 'STABLE'): { date: string, quantity: number }[] => {
   const history = [];
   let quantity = currentStock;
@@ -65,57 +37,6 @@ export const generateHistory = (currentStock: number, volatility: 'HIGH' | 'LOW'
 const CATEGORIES = ['Eletrônicos', 'Móveis', 'Acessórios', 'Periféricos', 'Casa', 'Escritório', 'Gamer', 'Rede'];
 
 const MOCK_PRODUCTS_BASE: Partial<Product>[] = [
-  // 📅 PRODUTOS DE DEMONSTRAÇÃO - CONTAGEM DE DIAS QUE ACABOU
-  {
-    id: 'DEMO-ZERO-1',
-    name: '⏰ DEMO Zerou há 1 dia',
-    category: 'Demo',
-    price: 100.00,
-    currentStock: 0,
-    minStockThreshold: 10,
-    history: [
-      { date: getPastDate(5), quantity: 5 },
-      { date: getPastDate(4), quantity: 3 },
-      { date: getPastDate(3), quantity: 2 },
-      { date: getPastDate(2), quantity: 1 },
-      { date: getPastDate(1), quantity: 0 }, // ZEROU HÁ 1 DIA
-      { date: getPastDate(0), quantity: 0 }  // HOJE
-    ]
-  },
-  {
-    id: 'DEMO-ZERO-2',
-    name: '⏰ DEMO Zerou há 2 dias',
-    category: 'Demo',
-    price: 200.00,
-    currentStock: 0,
-    minStockThreshold: 10,
-    history: [
-      { date: getPastDate(5), quantity: 7 },
-      { date: getPastDate(4), quantity: 4 },
-      { date: getPastDate(3), quantity: 1 },
-      { date: getPastDate(2), quantity: 0 }, // ZEROU HÁ 2 DIAS
-      { date: getPastDate(1), quantity: 0 },
-      { date: getPastDate(0), quantity: 0 }  // HOJE
-    ]
-  },
-  {
-    id: 'DEMO-ZERO-3',
-    name: '⏰ DEMO Zerou há 3 dias',
-    category: 'Demo',
-    price: 300.00,
-    currentStock: 0,
-    minStockThreshold: 10,
-    history: [
-      { date: getPastDate(5), quantity: 6 },
-      { date: getPastDate(4), quantity: 2 },
-      { date: getPastDate(3), quantity: 0 }, // ZEROU HÁ 3 DIAS
-      { date: getPastDate(2), quantity: 0 },
-      { date: getPastDate(1), quantity: 0 },
-      { date: getPastDate(0), quantity: 0 }  // HOJE
-    ]
-  },
-
-  // PRODUTOS NORMAIS
   { id: 'PROD-001', name: 'Fone de Ouvido Bluetooth Pro', category: 'Eletrônicos', price: 150.00, currentStock: 8, minStockThreshold: 10 },
   { id: 'PROD-002', name: 'Cadeira Gamer Ergonomic', category: 'Móveis', price: 850.00, currentStock: 45, minStockThreshold: 5 },
   { id: 'PROD-003', name: 'Mousepad RGB Extra Grande', category: 'Acessórios', price: 45.90, currentStock: 25, minStockThreshold: 15 },
@@ -144,12 +65,6 @@ const MOCK_PRODUCTS_BASE: Partial<Product>[] = [
 ];
 
 export const MOCK_DATA: Product[] = MOCK_PRODUCTS_BASE.map(p => {
-  // Produtos que já têm histórico definido (DEMO-ZERO)
-  if (p.history) {
-    return p as Product;
-  }
-
-  // Produtos normais
   const volatility = p.currentStock! < 20 ? 'HIGH' : 'LOW';
   return {
     ...p,
