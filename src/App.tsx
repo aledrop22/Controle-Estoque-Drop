@@ -922,16 +922,17 @@ const App: React.FC = () => {
                     if (product.currentStock === 0) {
                       const history = product.history || [];
                       if (history.length >= 2) {
-                        let zeroDate: string | null = null;
-                        for (let i = history.length - 1; i >= 0; i--) {
+                        // Procurar do mais antigo para o mais recente para encontrar quando zerou
+                        let firstZeroDate: string | null = null;
+                        for (let i = 0; i < history.length; i++) {
                           if (history[i].quantity === 0) {
-                            zeroDate = history[i].date;
-                          } else {
-                            break;
+                            firstZeroDate = history[i].date;
+                            break; // Encontrou a primeira data com estoque zero
                           }
                         }
-                        if (zeroDate) {
-                          const zeroDateTime = new Date(zeroDate).getTime();
+
+                        if (firstZeroDate) {
+                          const zeroDateTime = new Date(firstZeroDate).getTime();
                           const today = new Date().getTime();
                           daysSinceZero = Math.floor((today - zeroDateTime) / (1000 * 60 * 60 * 24));
                         }
