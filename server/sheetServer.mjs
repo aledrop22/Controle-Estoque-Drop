@@ -151,6 +151,27 @@ function mapRowsToProducts(rows, dateFilter) {
         const sales24h = entry.sales24h || 0;
         const captureDate = entry.date;
 
+        // Extrai URL do produto (várias colunas possíveis)
+        let url = getColumn(r, 'URL')
+            || getColumn(r, 'Link')
+            || getColumn(r, 'Página')
+            || getColumn(r, 'Pagina')
+            || getColumn(r, 'Product URL');
+        if (url && typeof url === 'string') {
+            url = String(url).trim();
+            if (!/^https?:\/\//i.test(url)) {
+                url = undefined;
+            }
+        } else {
+            url = undefined;
+        }
+        // Template opcional via env: PRODUCT_URL_TEMPLATE (ex.: https://shop.com/item/{id})
+        if (!url && process.env.PRODUCT_URL_TEMPLATE && id) {
+            try {
+                url = String(process.env.PRODUCT_URL_TEMPLATE).replace('{id}', String(id));
+            } catch { /* noop */ }
+        }
+
         // Monta histórico completo deste produto (últimos 30 dias ou todos disponíveis)
         const historyEntries = hist.rows.slice(-30).map(h => ({
             date: new Date(normalizeDateStr(h.date) + 'T12:00:00Z').toISOString(),
@@ -167,6 +188,7 @@ function mapRowsToProducts(rows, dateFilter) {
             captureDate,
             sales24h, // Agora é a diferença real de estoque!
             minStockThreshold: 10,
+            url,
             history: historyEntries
         };
     });
