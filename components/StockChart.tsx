@@ -22,7 +22,11 @@ export const StockChart: React.FC<StockChartProps> = ({ products, onPeriodChange
   const allDates = useMemo(() => {
     const dateSet = new Set<string>();
     products.forEach(p => {
-      p.history.forEach(h => dateSet.add(h.date));
+      p.history.forEach(h => {
+        // Normaliza data para YYYY-MM-DD (remove timestamp se houver)
+        const normalizedDate = h.date.slice(0, 10);
+        dateSet.add(normalizedDate);
+      });
     });
     return Array.from(dateSet).sort();
   }, [products]);
@@ -54,8 +58,8 @@ export const StockChart: React.FC<StockChartProps> = ({ products, onPeriodChange
       products.forEach(p => {
         const h = p.history;
 
-        // Encontra o índice da data atual
-        const currentIndex = h.findIndex(entry => entry.date === currentDate);
+        // Encontra o índice da data atual (normaliza antes de comparar)
+        const currentIndex = h.findIndex(entry => entry.date.slice(0, 10) === currentDate);
         if (currentIndex <= 0) return; // Não há dia anterior
 
         const prevEntry = h[currentIndex - 1];
@@ -119,7 +123,11 @@ export const StockChart: React.FC<StockChartProps> = ({ products, onPeriodChange
               dataKey="date"
               stroke="#9ca3af"
               fontSize={12}
-              tickFormatter={d => (d || '').slice(8, 10) + '/' + (d || '').slice(5, 7)}
+              tickFormatter={d => {
+                if (!d) return '';
+                const [year, month, day] = d.split('-');
+                return `${day}/${month}/${year}`;
+              }}
             />
             <YAxis
               stroke="#9ca3af"
@@ -130,7 +138,11 @@ export const StockChart: React.FC<StockChartProps> = ({ products, onPeriodChange
             />
             <Tooltip
               formatter={(value) => [value, 'Vendas']}
-              labelFormatter={(label) => `${(label || '').slice(8, 10)}/${(label || '').slice(5, 7)}/${(label || '').slice(0, 4)}`}
+              labelFormatter={(label) => {
+                if (!label) return '';
+                const [year, month, day] = label.split('-');
+                return `${day}/${month}/${year}`;
+              }}
               contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
             />
             <Line

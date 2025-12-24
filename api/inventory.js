@@ -4,6 +4,27 @@ import { google } from 'googleapis';
 let cache = { data: null, ts: 0 };
 const CACHE_TTL_MS = 60_000; // 1 minuto
 
+// Normaliza datas para ISO (YYYY-MM-DD) aceitando DD-MM-YYYY, serial Excel, etc.
+function normalizeDateStr(raw) {
+    if (!raw) return '';
+    const s = String(raw).trim();
+    let token = s.split(' ')[0].replace(/[./]/g, '-');
+    if (/^\d{4}-\d{2}-\d{2}$/.test(token)) return token;
+    const m = token.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+    if (m) {
+        const [, d, mo, y] = m;
+        return `${y}-${mo}-${d}`;
+    }
+    if (/^\d{5,}$/.test(token)) {
+        const base = new Date('1899-12-30T00:00:00Z');
+        base.setDate(base.getDate() + Number(token));
+        return base.toISOString().slice(0, 10);
+    }
+    const dt = new Date(s);
+    if (!isNaN(dt.getTime())) return dt.toISOString().slice(0, 10);
+    return '';
+}
+
 function mapRowsToProducts(rows, dateFilter) {
     if (!rows || rows.length === 0) return [];
     const headers = rows[0].map(h => String(h).trim());
@@ -16,15 +37,15 @@ function mapRowsToProducts(rows, dateFilter) {
 
     const productHistory = {};
     dataRows.forEach(r => {
-        const id = r[getIndex('ID do Produto')] || r[getIndex('Número Item')] || r[idxProduto] || '';
+        const id = r[getIndex('ID do Produto')] || r[getIndex('Número Item')] || '';
         const name = r[idxProduto] || 'Sem Nome';
         if (name === 'Sem Nome' || !name) return;
 
-        const key = String(id || name).trim();
+        // Agrupar por NOME (IDs variam entre coletas)
+        const key = String(name).trim();
         const rawDate = r[idxDataColeta];
-        if (!rawDate) return;
-
-        const dateOnly = String(rawDate).split(' ')[0];
+        const dateOnly = normalizeDateStr(rawDate);
+        if (!dateOnly) return;
         const stock = parseInt(r[idxEstoque] || '0') || 0;
 
         if (!productHistory[key]) {
@@ -113,7 +134,7 @@ function mapRowsToProducts(rows, dateFilter) {
         }
 
         const historyEntries = hist.rows.slice(-30).map(h => ({
-            date: h.date, // Mantém formato YYYY-MM-DD puro
+            date: normalizeDateStr(h.date),
             quantity: h.stock,
             price: parseFloat(getColumn(h.rawRow, 'Preço') || '0') || 0
         }));
@@ -198,8 +219,8 @@ export default async function handler(req, res) {
                 const idxData = headers.findIndex(h => String(h).toLowerCase().includes('data da coleta'));
                 if (idxData >= 0) {
                     const dates = rows.slice(1)
-                        .map(r => String(r[idxData]).split(' ')[0])
-                        .filter(d => /\d{4}-\d{2}-\d{2}/.test(d));
+                        .map(r => normalizeDateStr(r[idxData]))
+                        .filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d));
                     const latest = dates.sort().reverse()[0];
                     if (latest && latest !== effectiveFilterDate) {
                         filtered = mapRowsToProducts(rows, latest);

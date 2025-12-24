@@ -37,6 +37,32 @@ const sheetsApi = () => google.sheets({ version: 'v4', auth: jwt });
 let cache = { data: null, ts: 0 };
 const CACHE_TTL_MS = 60_000; // 1 minuto
 
+// Normaliza datas vindas da planilha para formato ISO (YYYY-MM-DD)
+function normalizeDateStr(raw) {
+    if (!raw) return '';
+    const s = String(raw).trim();
+    // pega só a parte da data caso tenha horário
+    let token = s.split(' ')[0].replace(/[./]/g, '-');
+    // YYYY-MM-DD ou YYYY/MM/DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(token)) return token;
+    // DD-MM-YYYY ou DD/MM/YYYY
+    const m = token.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+    if (m) {
+        const [, d, mo, y] = m;
+        return `${y}-${mo}-${d}`;
+    }
+    // Datas numéricas do Excel (serial date)
+    if (/^\d{5,}$/.test(token)) {
+        const base = new Date('1899-12-30T00:00:00Z');
+        base.setDate(base.getDate() + Number(token));
+        return base.toISOString().slice(0, 10);
+    }
+    // Última tentativa com Date
+    const dt = new Date(s);
+    if (!isNaN(dt.getTime())) return dt.toISOString().slice(0, 10);
+    return '';
+}
+
 function mapRowsToProducts(rows, dateFilter) {
     if (!rows || rows.length === 0) return [];
     const headers = rows[0].map(h => String(h).trim());
@@ -47,22 +73,22 @@ function mapRowsToProducts(rows, dateFilter) {
     const idxProduto = getIndex('Produto');
     const idxEstoque = getIndex('Estoque');
 
-    // Agrupa todas as linhas por produto (ID ou Nome)
+    // Agrupa todas as linhas por produto (NOME, não ID - IDs podem mudar!)
     const productHistory = {};
     dataRows.forEach(r => {
-        const id = r[getIndex('ID do Produto')] || r[getIndex('Número Item')] || r[idxProduto] || '';
+        const id = r[getIndex('ID do Produto')] || r[getIndex('Número Item')] || '';
         const name = r[idxProduto] || 'Sem Nome';
         if (name === 'Sem Nome' || !name) return;
 
-        const key = String(id || name).trim();
+        // IMPORTANTE: Agrupa por NOME, não por ID (IDs variam entre scrapes)
+        const key = String(name).trim();
         const rawDate = r[idxDataColeta];
-        if (!rawDate) return;
-
-        const dateOnly = String(rawDate).split(' ')[0];
+        const dateOnly = normalizeDateStr(rawDate);
+        if (!dateOnly) return;
         const stock = parseInt(r[idxEstoque] || '0') || 0;
 
         if (!productHistory[key]) {
-            productHistory[key] = { name, rows: [] };
+            productHistory[key] = { name, id, rows: [] };
         }
         productHistory[key].rows.push({
             date: dateOnly,
@@ -117,7 +143,7 @@ function mapRowsToProducts(rows, dateFilter) {
 
     return productsToReturn.map(({ key, entry, hist }) => {
         const r = entry.rawRow;
-        const id = getColumn(r, 'ID do Produto') || getColumn(r, 'Número Item') || key;
+        const id = getColumn(r, 'ID do Produto') || getColumn(r, 'Número Item') || hist.id || key;
         const name = getColumn(r, 'Produto') || hist.name;
         const category = 'Geral';
         const price = parseFloat(getColumn(r, 'Preço') || '0') || 0;
@@ -127,7 +153,7 @@ function mapRowsToProducts(rows, dateFilter) {
 
         // Monta histórico completo deste produto (últimos 30 dias ou todos disponíveis)
         const historyEntries = hist.rows.slice(-30).map(h => ({
-            date: new Date(h.date + 'T12:00:00Z').toISOString(),
+            date: new Date(normalizeDateStr(h.date) + 'T12:00:00Z').toISOString(),
             quantity: h.stock,
             price: parseFloat(getColumn(h.rawRow, 'Preço') || '0') || 0
         }));
@@ -180,8 +206,8 @@ app.get('/api/inventory', async (req, res) => {
                 const idxData = headers.findIndex(h => String(h).toLowerCase().includes('data da coleta'));
                 if (idxData >= 0) {
                     const dates = rows.slice(1)
-                        .map(r => String(r[idxData]).split(' ')[0])
-                        .filter(d => /\d{4}-\d{2}-\d{2}/.test(d));
+                        .map(r => normalizeDateStr(r[idxData]))
+                        .filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d));
                     const latest = dates.sort().reverse()[0];
                     if (latest && latest !== effectiveFilterDate) {
                         filtered = mapRowsToProducts(rows, latest);

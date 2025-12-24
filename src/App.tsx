@@ -739,8 +739,15 @@ const App: React.FC = () => {
               {newProducts.map((p, idx) => {
                 const isNew = (p as any).isNew;
                 const daysSince = (p as any).daysSinceEntry;
+                const CardWrapper = p.url ? 'a' : 'div';
+                const cardProps = p.url ? { href: p.url, target: '_blank', rel: 'noopener noreferrer' } : {};
+
                 return (
-                  <div key={`new-${p.id}`} className={`p-3 border-2 rounded-lg hover:shadow-md transition-all group ${isNew ? 'border-emerald-300 bg-emerald-50/30' : 'border-red-300 bg-red-50/30'}`}>
+                  <CardWrapper
+                    key={`new-${p.id}`}
+                    className={`p-3 border-2 rounded-lg hover:shadow-md transition-all group cursor-pointer ${isNew ? 'border-emerald-300 bg-emerald-50/30 hover:border-emerald-500' : 'border-red-300 bg-red-50/30 hover:border-red-500'}`}
+                    {...cardProps}
+                  >
                     <div className="flex flex-col gap-2">
                       {/* Tag de status */}
                       <div className="flex items-center justify-between">
@@ -750,15 +757,9 @@ const App: React.FC = () => {
                         <span className="text-[10px] text-gray-500">{daysSince}d</span>
                       </div>
                       {/* Nome com numeração no início */}
-                      {p.url ? (
-                        <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-indigo-700 hover:text-indigo-900 line-clamp-2 group-hover:underline" title={p.name}>
-                          <span className={`${isNew ? 'text-emerald-600' : 'text-red-600'}`}>#{idx + 1}</span> {p.name}
-                        </a>
-                      ) : (
-                        <span className="text-sm font-semibold text-gray-900 line-clamp-2" title={p.name}>
-                          <span className={`${isNew ? 'text-emerald-600' : 'text-red-600'}`}>#{idx + 1}</span> {p.name}
-                        </span>
-                      )}
+                      <span className={`text-sm font-semibold line-clamp-2 ${p.url ? 'text-indigo-700 group-hover:text-indigo-900 group-hover:underline' : 'text-gray-900'}`} title={p.name}>
+                        <span className={`${isNew ? 'text-emerald-600' : 'text-red-600'}`}>#{idx + 1}</span> {p.name}
+                      </span>
                       <div className="flex items-center gap-2 text-[11px] text-gray-600">
                         <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700" title="Dia de entrada">
                           {(() => {
@@ -778,7 +779,7 @@ const App: React.FC = () => {
                         </div>
                       )}
                     </div>
-                  </div>
+                  </CardWrapper>
                 );
               })}
             </div>
@@ -960,7 +961,11 @@ const App: React.FC = () => {
                     }
 
                     return (
-                      <tr key={product.id} className="hover:bg-gray-50 transition-colors group">
+                      <tr
+                        key={product.id}
+                        className={`transition-colors group ${product.url ? 'hover:bg-indigo-50 cursor-pointer' : 'hover:bg-gray-50'}`}
+                        onClick={() => product.url && window.open(product.url, '_blank')}
+                      >
                         <td className="p-4 text-center">
                           {isLow ? (
                             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-red-100 text-red-600 animate-pulse">
@@ -973,11 +978,19 @@ const App: React.FC = () => {
                         <td className="p-4">
                           <div className="flex items-center gap-2">
                             {product.url ? (
-                              <a href={product.url} target="_blank" rel="noopener noreferrer" className="text-indigo-700 hover:text-indigo-900 underline underline-offset-2">
+                              <a
+                                href={product.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title={product.name}
+                                className="text-indigo-700 hover:text-indigo-900 underline underline-offset-2"
+                              >
                                 {product.name}
                               </a>
                             ) : (
-                              <span className="text-gray-900 group-hover:text-indigo-600 transition-colors">{product.name}</span>
+                              <span className="text-gray-900 group-hover:text-indigo-600 transition-colors" title={product.name}>
+                                {product.name}
+                              </span>
                             )}
                             {newProducts.some(np => np.id === product.id) && (
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700" title="Produto novo no último dia">
