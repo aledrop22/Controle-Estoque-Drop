@@ -297,11 +297,80 @@ const App: React.FC = () => {
       : <ArrowDown size={14} className="text-indigo-600 ml-1 inline" />;
   };
 
+  // Função auxiliar: extrai o "nome base" do produto removendo padrões de variação (cores, tamanhos)
+  const getBaseName = (name: string): string => {
+    // Remove padrões comuns de variação no final
+    let baseName = name
+      // Remove cores comuns (branco, preto, azul, vermelho, verde, amarelo, rosa, roxo, cinza, laranja, marrom, bege, etc)
+      .replace(/\s+(branco|preto|azul|vermelho|verde|amarelo|rosa|roxo|cinza|laranja|marrom|bege|turquesa|violeta|coral|gold|ouro|prata|silver|bronze|prata escuro|grafite|navy|khaki|chamois|sand|tan|beige|cream|nude|off[\s-]?white|ivory)$/gi, '')
+      // Remove padrões de tamanho (P, M, G, GG, P/M, M/G, PP, etc)
+      .replace(/\s+(?:tamanho|size|tam\.?|p(?:eque)?(?:no)?|m(?:édio)?|g(?:rande)?|gg|pp|xp|xs|s|l|xl|xxl|xxxl)[\s-]?\d*[\s-]?(?:cm|mm|polegadas|pol|"|'|in)?$/gi, '')
+      // Remove números de variação no final (1, 2, 3, etc)
+      .replace(/\s+(?:cor|color)\s+\d+$/gi, '')
+      // Remove padrões de voltagem (110v, 127v, 220v, 240v, bivolt)
+      .replace(/\s+(?:110v|127v|220v|240v|bivolt|monovolts?)$/gi, '')
+      .trim();
+    
+    return baseName;
+  };
+
+  // Função auxiliar: verifica se existe outra variação do mesmo produto com estoque > 2
+  const hasVariationWithStock = (product: Product, allProducts: Product[]): boolean => {
+    const baseName = getBaseName(product.name);
+    // Procura por outros produtos com nome base similar e estoque > 2
+    return allProducts.some(p => 
+      p.id !== product.id && // Não contar a si mesmo
+      getBaseName(p.name) === baseName && // Mesmo produto base
+      p.currentStock > 2 // Tem estoque
+    );
+  };
+
   // Produtos com estoque baixo (≤ 2) - para banner de alerta
   const lowStockAlertProducts = useMemo(() => {
     return products
-      .filter(p => p.currentStock > 0 && p.currentStock <= 2)
-      .sort((a, b) => a.currentStock - b.currentStock) // Ordena: menor estoque primeiro
+      .filter(p => {
+        // Incluir produtos com 0, 1 ou 2 unidades
+        if (p.currentStock <= 2) return true;
+        return false;
+      })
+      .filter(p => {
+        // Para produtos zerados, verificar se devem aparecer (até 3 dias após zeramento)
+        if (p.currentStock > 0) return true; // Produtos com estoque aparecem sempre
+
+        const history = p.history || [];
+        if (history.length < 2) return true; // Se não tem histórico, manter
+
+        // Encontrar quando o produto zerou
+        let zeroDate: string | null = null;
+        for (let i = history.length - 1; i >= 0; i--) {
+          if (history[i].quantity === 0) {
+            zeroDate = history[i].date;
+          } else {
+            break;
+          }
+        }
+
+        if (!zeroDate) return true; // Se não encontrou quando zerou, manter
+
+        // Calcular dias desde que zerou
+        const zeroDateTime = new Date(zeroDate).getTime();
+        const today = new Date().getTime();
+        const daysSinceZero = Math.floor((today - zeroDateTime) / (1000 * 60 * 60 * 24));
+
+        return daysSinceZero <= 3; // Manter por 3 dias
+      })
+      .filter(p => {
+        // Excluir produtos que têm variações com mais estoque
+        return !hasVariationWithStock(p, products);
+      })
+      .sort((a, b) => {
+        // Ordena: 0 primero, depois 1, depois 2
+        if (a.currentStock === b.currentStock) {
+          // Se ambos têm o mesmo estoque, ordenar por nome
+          return a.name.localeCompare(b.name);
+        }
+        return a.currentStock - b.currentStock;
+      })
       .slice(0, 20); // Máximo 20 produtos no alerta
   }, [products]);
 
@@ -587,6 +656,7 @@ const App: React.FC = () => {
               {lowStockAlertProducts.map((product) => {
                 const isZero = product.currentStock === 0;
                 const isOne = product.currentStock === 1;
+                const isTwo = product.currentStock === 2;
                 const bgColor = isZero ? 'bg-red-100 border-red-400' : isOne ? 'bg-orange-100 border-orange-400' : 'bg-yellow-100 border-yellow-400';
                 const textColor = isZero ? 'text-red-900' : isOne ? 'text-orange-900' : 'text-yellow-900';
                 const badgeColor = isZero ? 'bg-red-600 text-white' : isOne ? 'bg-orange-600 text-white' : 'bg-yellow-600 text-white';
@@ -594,6 +664,7 @@ const App: React.FC = () => {
 
                 // Calcular dias desde que zerou (para produtos zerados)
                 let daysSinceZero: number | null = null;
+                let zeroDateString: string | null = null;
                 if (isZero) {
                   const history = product.history || [];
                   if (history.length >= 2) {
@@ -605,6 +676,7 @@ const App: React.FC = () => {
                       }
                     }
                     if (firstZeroDate) {
+                      zeroDateString = firstZeroDate;
                       const zeroDateTime = new Date(firstZeroDate).getTime();
                       const today = new Date().getTime();
                       daysSinceZero = Math.floor((today - zeroDateTime) / (1000 * 60 * 60 * 24));
@@ -612,15 +684,32 @@ const App: React.FC = () => {
                   }
                 }
 
+                // Determinar o texto da tag
+                let tagText = '';
+                let dayLabel = '';
+                if (isZero && daysSinceZero !== null) {
+                  tagText = 'ZERO';
+                  const daysDisplay = Math.min(daysSinceZero, 3); // Máximo 3 dias
+                  dayLabel = `${daysDisplay}D`;
+                } else if (isZero) {
+                  tagText = 'ZERO';
+                } else {
+                  tagText = `${product.currentStock} UNID`;
+                }
+
                 return (
                   <div key={`alert-${product.id}`} className={`p-3 rounded-lg border-2 ${bgColor} ${textColor} shadow-sm hover:shadow-md transition-all`}>
                     <div className="flex items-start justify-between mb-2">
-                      <span className={`px-2 py-1 rounded-full text-xs font-black ${badgeColor} flex items-center gap-1`}>
-                        {icon} {isZero ? (daysSinceZero !== null && daysSinceZero >= 1 ? `${daysSinceZero} DIA${daysSinceZero > 1 ? 'S' : ''} ACABOU` : 'ZERADO') : `${product.currentStock} UNID`}
-                      </span>
-                      {isZero && daysSinceZero !== null && daysSinceZero >= 1 && daysSinceZero <= 3 && (
-                        <span className="text-xs font-bold">⏰</span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 rounded-full text-xs font-black ${badgeColor} flex items-center gap-1`}>
+                          {icon} {tagText}
+                        </span>
+                        {isZero && dayLabel && (
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${badgeColor} flex items-center gap-1`}>
+                            ⏱️ {dayLabel}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     {product.url ? (
                       <a

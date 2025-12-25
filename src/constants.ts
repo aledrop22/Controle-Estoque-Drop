@@ -62,6 +62,22 @@ const MOCK_PRODUCTS_BASE: Partial<Product>[] = [
   { id: 'PROD-023', name: 'Filtro de Linha 6 Tomadas', category: 'Casa', price: 35.00, currentStock: 150, minStockThreshold: 30 },
   { id: 'PROD-024', name: 'Smart Lâmpada Wi-Fi', category: 'Casa', price: 55.00, currentStock: 80, minStockThreshold: 20 },
   { id: 'PROD-025', name: 'Case para HD Externo', category: 'Acessórios', price: 40.00, currentStock: 9, minStockThreshold: 10 },
+  // Produtos com estoque crítico para demonstração
+  { id: 'PROD-026', name: 'Adaptador USB 3.0 para USB-C', category: 'Acessórios', price: 35.00, currentStock: 2, minStockThreshold: 10 },
+  { id: 'PROD-027', name: 'Protetor de Tela Vidro Temperado', category: 'Acessórios', price: 15.00, currentStock: 1, minStockThreshold: 5 },
+  { id: 'PROD-028', name: 'Carregador Rápido USB-C 65W', category: 'Eletrônicos', price: 120.00, currentStock: 0, minStockThreshold: 3 },
+  
+  // Produtos com variações - SERÁ EXCLUÍDO do card crítico pois tem variação com estoque
+  { id: 'PROD-029-P', name: 'Camiseta Básica Branco P', category: 'Vestuário', price: 29.90, currentStock: 0, minStockThreshold: 5 },
+  { id: 'PROD-029-M', name: 'Camiseta Básica Azul M', category: 'Vestuário', price: 29.90, currentStock: 15, minStockThreshold: 5 },
+  
+  // Outro exemplo: um zerará, outro terá estoque
+  { id: 'PROD-030-RED', name: 'Fone Sem Fio Bluetooth Vermelho', category: 'Eletrônicos', price: 85.00, currentStock: 1, minStockThreshold: 5 },
+  { id: 'PROD-030-BLK', name: 'Fone Sem Fio Bluetooth Preto', category: 'Eletrônicos', price: 85.00, currentStock: 8, minStockThreshold: 5 },
+  
+  // Produto que SERÁ MOSTRADO no card crítico (nenhuma variação com estoque)
+  { id: 'PROD-031-GOLD', name: 'Relógio Digital 110v Ouro', category: 'Eletrônicos', price: 150.00, currentStock: 0, minStockThreshold: 3 },
+  { id: 'PROD-031-SILVER', name: 'Relógio Digital 220v Prata', category: 'Eletrônicos', price: 150.00, currentStock: 0, minStockThreshold: 3 },
 ];
 
 export const MOCK_DATA: Product[] = MOCK_PRODUCTS_BASE.map(p => {
