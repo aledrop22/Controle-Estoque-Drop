@@ -1,6 +1,9 @@
 export default function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/json');
+    TELEGRAM_TOKEN: process.env.TELEGRAM_TOKEN || "não encontrada",
+        TELEGRAM_CHAT_ID: process.env.TELEGRAM_CHAT_ID || "não encontrada",
+            allEnvVars: Object.keys(process.env)
 
     const telegramVars = {
         'TELEGRAM_TOKEN': process.env.TELEGRAM_TOKEN || '(não encontrada)',
