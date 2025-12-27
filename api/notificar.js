@@ -11,8 +11,8 @@ export default async function handler(req, res) {
         return res.status(405).json({ ok: false, error: 'Method not allowed' });
     }
 
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    const chatId = process.env.TELEGRAM_CHAT_ID;
+    const botToken = process.env.TELEGRAM_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
+    const chatId = process.env.ID_DO_CHAT_DO_TELEGRAM || process.env.TELEGRAM_CHAT_ID;
 
     if (!botToken || !chatId) {
         return res.status(500).json({ ok: false, error: 'Missing Telegram config' });
