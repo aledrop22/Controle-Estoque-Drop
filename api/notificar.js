@@ -11,25 +11,11 @@ export default async function handler(req, res) {
         return res.status(405).json({ ok: false, error: 'Method not allowed' });
     }
 
-    // Debug: log todas as env vars relacionadas a Telegram
-    console.log('DEBUG: Checking Telegram env vars');
-    console.log('TELEGRAM_TOKEN:', process.env.TELEGRAM_TOKEN ? '✓ presente' : '✗ ausente');
-    console.log('TELEGRAM_BOT_TOKEN:', process.env.TELEGRAM_BOT_TOKEN ? '✓ presente' : '✗ ausente');
-    console.log('ID_DO_CHAT_DO_TELEGRAM:', process.env.ID_DO_CHAT_DO_TELEGRAM ? '✓ presente' : '✗ ausente');
-    console.log('TELEGRAM_CHAT_ID:', process.env.TELEGRAM_CHAT_ID ? '✓ presente' : '✗ ausente');
-
-    const botToken = process.env.TELEGRAM_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
-    const chatId = process.env.ID_DO_CHAT_DO_TELEGRAM || process.env.TELEGRAM_CHAT_ID;
+    const botToken = process.env.TELEGRAM_TOKEN;
+    const chatId = process.env.TELEGRAM_CHAT_ID;
 
     if (!botToken || !chatId) {
-        return res.status(500).json({
-            ok: false,
-            error: 'Missing Telegram config',
-            debug: {
-                botToken: botToken ? 'present' : 'missing',
-                chatId: chatId ? 'present' : 'missing'
-            }
-        });
+        return res.status(500).json({ ok: false, error: 'Missing Telegram config' });
     }
 
     const { produto, quantidade, quantidadeAnterior } = req.body || {};
