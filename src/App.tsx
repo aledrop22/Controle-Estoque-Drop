@@ -662,7 +662,7 @@ const App: React.FC = () => {
           </div>
           <div className="p-4 max-h-96 overflow-y-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {lowStockAlertProducts.map((product) => {
+              {lowStockAlertProducts.map((product, index) => {
                 const isZero = product.currentStock === 0;
                 const isOne = product.currentStock === 1;
                 const isTwo = product.currentStock === 2;
@@ -670,6 +670,20 @@ const App: React.FC = () => {
                 const textColor = isZero ? 'text-red-900' : isOne ? 'text-orange-900' : 'text-yellow-900';
                 const badgeColor = isZero ? 'bg-red-600 text-white' : isOne ? 'bg-orange-600 text-white' : 'bg-yellow-600 text-white';
                 const icon = isZero ? '🔴' : isOne ? '🟠' : '🟡';
+
+                // Calcular numeração separada por tipo de estoque
+                const productsWithZero = lowStockAlertProducts.filter(p => p.currentStock === 0);
+                const productsWithOne = lowStockAlertProducts.filter(p => p.currentStock === 1);
+                const productsWithTwo = lowStockAlertProducts.filter(p => p.currentStock === 2);
+                
+                let skuNumber = 0;
+                if (isZero) {
+                  skuNumber = productsWithZero.findIndex(p => p.id === product.id) + 1;
+                } else if (isOne) {
+                  skuNumber = productsWithOne.findIndex(p => p.id === product.id) + 1;
+                } else if (isTwo) {
+                  skuNumber = productsWithTwo.findIndex(p => p.id === product.id) + 1;
+                }
 
                 // Calcular dias desde que zerou (para produtos zerados)
                 let daysSinceZero: number | null = null;
@@ -711,7 +725,7 @@ const App: React.FC = () => {
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <span className={`px-2 py-1 rounded-full text-xs font-black ${badgeColor} flex items-center gap-1`}>
-                          {icon} {tagText}
+                          #{skuNumber} {icon} {tagText}
                         </span>
                         {isZero && dayLabel && (
                           <span className={`px-2 py-1 rounded-full text-xs font-bold ${badgeColor} flex items-center gap-1`}>
