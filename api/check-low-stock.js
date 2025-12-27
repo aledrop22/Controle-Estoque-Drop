@@ -1,4 +1,10 @@
 import { google } from 'googleapis';
+import {
+    updateRegistry,
+    removeExpiredSkus,
+    getTrackedSkus,
+    getTrackerStats
+} from './critical-stock-tracker.js';
 
 // Threshold para considerar estoque baixo
 const LOW_STOCK_THRESHOLD = 2;
@@ -241,6 +247,18 @@ export default async function handler(req, res) {
         // Buscar produtos
         const products = await getProducts();
 
+        // Atualizar registry de SKUs críticos
+        const registryUpdates = updateRegistry(products);
+
+        // Remover SKUs que completaram 3 dias no zero
+        const removedSkus = removeExpiredSkus();
+
+        // Obter estatísticas do rastreamento
+        const trackerStats = getTrackerStats();
+
+        // Obter SKUs rastreados
+        const trackedSkus = getTrackedSkus();
+
         // Filtrar produtos com estoque baixo (≤ 2 unidades)
         const lowStockProducts = products.filter(p => p.stock <= LOW_STOCK_THRESHOLD);
 
@@ -259,21 +277,27 @@ export default async function handler(req, res) {
         const low = lowStockProducts.filter(p => p.stock === 2);
 
         // Criar mensagem
-        let message = `🚨 *ALERTA DE ESTOQUE BAIXO*\n\n`;
-        message += `Total de produtos com estoque ≤ 2: *${lowStockProducts.length}*\n\n`;
+        let message = `🚨 *ALERTA DE ESTOQUE CRÍTICO*\n\n`;
+        message += `📊 Resumo: ${lowStockProducts.length} produto(s) com ≤ 2 unidades\n`;
+        message += `🔍 Rastreados: *${trackerStats.withTwoUnits} SKU (2UNID.)* e *${trackerStats.withOneUnit} SKU (1UNID.)*\n\n`;
 
         if (outOfStock.length > 0) {
             message += `🔴 *ZERADOS (${outOfStock.length}):*\n`;
             outOfStock.forEach(p => {
-                message += `• ${p.name} (${p.id})\n`;
+                const tracked = trackedSkus.find(t => t.sku === String(p.id));
+                const daysInfo = tracked && tracked.daysAtZero > 0 ? ` - ${tracked.daysAtZero} dia(s) zerado` : '';
+                const entryInfo = tracked && tracked.entryDate ? ` | Entrada: ${new Date(tracked.entryDate).toLocaleDateString('pt-BR')}` : '';
+                message += `• ${p.name} (${p.id})${daysInfo}${entryInfo}\n`;
             });
             message += '\n';
         }
 
         if (veryLow.length > 0) {
-            message += `🟠 *1 UNIDADE (${veryLow.length}):*\n`;
+            message += `🔴 *1 UNIDADE (${veryLow.length}):* ⚠️ CRÍTICO\n`;
             veryLow.forEach(p => {
-                message += `• ${p.name} (${p.id})\n`;
+                const tracked = trackedSkus.find(t => t.sku === String(p.id));
+                const entryInfo = tracked && tracked.entryDate ? ` | Entrada: ${new Date(tracked.entryDate).toLocaleDateString('pt-BR')}` : '';
+                message += `• ${p.name} (${p.id})${entryInfo}\n`;
             });
             message += '\n';
         }
@@ -281,8 +305,30 @@ export default async function handler(req, res) {
         if (low.length > 0) {
             message += `🟡 *2 UNIDADES (${low.length}):*\n`;
             low.forEach(p => {
-                message += `• ${p.name} (${p.id})\n`;
+                const tracked = trackedSkus.find(t => t.sku === String(p.id));
+                const entryInfo = tracked && tracked.entryDate ? ` | Entrada: ${new Date(tracked.entryDate).toLocaleDateString('pt-BR')}` : '';
+                message += `• ${p.name} (${p.id})${entryInfo}\n`;
             });
+            message += '\n';
+        }
+
+        // Alertas de SKUs que serão removidos (3 dias zerados)
+        if (removedSkus.length > 0) {
+            message += `⏰ *REMOVIDOS DO RASTREAMENTO (3 dias zerados):*\n`;
+            removedSkus.forEach(sku => {
+                message += `• ${sku.name} (${sku.sku}) - Zerou em ${new Date(sku.zeroDate).toLocaleDateString('pt-BR')}\n`;
+            });
+            message += '\n';
+        }
+
+        // SKUs próximos de serem removidos
+        const nearRemoval = trackedSkus.filter(t => t.daysAtZero === 2);
+        if (nearRemoval.length > 0) {
+            message += `⚠️ *ALERTA: Removidos amanhã (2 dias zerados):*\n`;
+            nearRemoval.forEach(sku => {
+                message += `• ${sku.name} (${sku.sku})\n`;
+            });
+            message += '\n';
         }
 
         // Filtrar produtos que devem ser notificados (respeitando cooldown)
@@ -313,6 +359,16 @@ export default async function handler(req, res) {
             message: `${successCount} notificação(ões) enviada(s)`,
             lowStockProducts: lowStockProducts.length,
             notified: productsToNotify.length,
+            tracking: {
+                totalTracked: trackerStats.total,
+                withTwoUnits: trackerStats.withTwoUnits,
+                withOneUnit: trackerStats.withOneUnit,
+                atZero: trackerStats.atZero,
+                day1AtZero: trackerStats.day1AtZero,
+                day2AtZero: trackerStats.day2AtZero,
+                pendingRemoval: trackerStats.pendingRemoval,
+                removedThisCheck: removedSkus.length
+            },
             notifications: {
                 telegram: notifications[0].success,
                 discord: notifications[1].success,
@@ -322,7 +378,9 @@ export default async function handler(req, res) {
                 id: p.id,
                 name: p.name,
                 stock: p.stock,
-                status: p.stock === 0 ? 'OUT_OF_STOCK' : 'LOW_STOCK'
+                status: p.stock === 0 ? 'OUT_OF_STOCK' : 'LOW_STOCK',
+                tracked: trackedSkus.some(t => t.sku === String(p.id)),
+                daysAtZero: trackedSkus.find(t => t.sku === String(p.id))?.daysAtZero || 0
             }))
         });
 

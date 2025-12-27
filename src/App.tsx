@@ -310,7 +310,7 @@ const App: React.FC = () => {
       // Remove padrões de voltagem (110v, 127v, 220v, 240v, bivolt)
       .replace(/\s+(?:110v|127v|220v|240v|bivolt|monovolts?)$/gi, '')
       .trim();
-    
+
     return baseName;
   };
 
@@ -318,7 +318,7 @@ const App: React.FC = () => {
   const hasVariationWithStock = (product: Product, allProducts: Product[]): boolean => {
     const baseName = getBaseName(product.name);
     // Procura por outros produtos com nome base similar e estoque > 2
-    return allProducts.some(p => 
+    return allProducts.some(p =>
       p.id !== product.id && // Não contar a si mesmo
       getBaseName(p.name) === baseName && // Mesmo produto base
       p.currentStock > 2 // Tem estoque
@@ -638,9 +638,18 @@ const App: React.FC = () => {
               <AlertTriangle size={28} className="animate-bounce" />
               <div>
                 <h3 className="text-xl font-bold animate-pulse">⚠️ ALERTA: Estoque Crítico</h3>
-                <p className="text-sm text-red-100">
-                  {lowStockAlertProducts.filter(p => p.currentStock === 0).length > 0 && `${lowStockAlertProducts.filter(p => p.currentStock === 0).length} ZERADO(S) • `}
-                  {lowStockAlertProducts.length} produto(s) com ≤ 2 unidades
+                <p className="text-sm text-red-100 flex items-center gap-3 flex-wrap">
+                  {lowStockAlertProducts.filter(p => p.currentStock === 0).length > 0 && (
+                    <span className="bg-black/20 px-2 py-0.5 rounded">
+                      {lowStockAlertProducts.filter(p => p.currentStock === 0).length} ZERADO(S)
+                    </span>
+                  )}
+                  <span className="bg-red-700/50 px-2 py-0.5 rounded font-semibold">
+                    🔴 {lowStockAlertProducts.filter(p => p.currentStock === 1).length} SKU (1UNID.)
+                  </span>
+                  <span className="bg-yellow-500/50 px-2 py-0.5 rounded font-semibold">
+                    🟡 {lowStockAlertProducts.filter(p => p.currentStock === 2).length} SKU (2UNID.)
+                  </span>
                 </p>
               </div>
             </div>
