@@ -638,19 +638,19 @@ const App: React.FC = () => {
               <AlertTriangle size={28} className="animate-bounce" />
               <div>
                 <h3 className="text-xl font-bold animate-pulse">⚠️ ALERTA: Estoque Crítico</h3>
-                <p className="text-sm text-red-100 flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap mt-2">
                   {lowStockAlertProducts.filter(p => p.currentStock === 0).length > 0 && (
-                    <span className="bg-black/20 px-2 py-0.5 rounded">
+                    <span className="bg-white text-red-600 px-3 py-1 rounded-lg font-bold text-sm shadow-md">
                       {lowStockAlertProducts.filter(p => p.currentStock === 0).length} ZERADO(S)
                     </span>
                   )}
-                  <span className="bg-red-700/50 px-2 py-0.5 rounded font-semibold">
+                  <span className="bg-white text-red-600 px-3 py-1 rounded-lg font-bold text-sm shadow-md">
                     🔴 {lowStockAlertProducts.filter(p => p.currentStock === 1).length} SKU (1UNID.)
                   </span>
-                  <span className="bg-yellow-500/50 px-2 py-0.5 rounded font-semibold">
+                  <span className="bg-white text-red-600 px-3 py-1 rounded-lg font-bold text-sm shadow-md">
                     🟡 {lowStockAlertProducts.filter(p => p.currentStock === 2).length} SKU (2UNID.)
                   </span>
-                </p>
+                </div>
               </div>
             </div>
             <button
