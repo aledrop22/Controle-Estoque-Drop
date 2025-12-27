@@ -13,6 +13,7 @@ export interface Product {
   currentStock: number;
   minStockThreshold: number;
   url?: string;
+  captureDate?: string; // Data de entrada/coleta do produto
   history: DailySnapshot[]; // Sorted by date ascending
 }
 

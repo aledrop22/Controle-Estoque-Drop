@@ -743,6 +743,12 @@ const App: React.FC = () => {
                         </span>
                       )}
                     </div>
+                    {/* Data de captura/entrada */}
+                    {product.captureDate && (
+                      <div className="mt-2 pt-2 border-t border-current opacity-70 text-xs font-semibold flex items-center gap-1">
+                        📅 Entrada: {new Date(product.captureDate).toLocaleDateString('pt-BR')}
+                      </div>
+                    )}
                     {(() => {
                       const analysis = processedData.find(a => a.productId === product.id);
                       const sales = analysis?.salesLast24h || 0;
