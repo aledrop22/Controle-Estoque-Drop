@@ -1,0 +1,12 @@
+{
+    "crons": [
+        {
+            "path": "/api/check-low-stock",
+            "schedule": "0 */6 * * *"
+        },
+        {
+            "path": "/api/notify-removed-skus",
+            "schedule": "0 9 * * *"
+        }
+    ]
+}
