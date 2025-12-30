@@ -1,24 +1,36 @@
-export default function handler(req, res) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Content-Type', 'application/json');
-    TELEGRAM_TOKEN: process.env.TELEGRAM_TOKEN || "não encontrada",
-        TELEGRAM_CHAT_ID: process.env.TELEGRAM_CHAT_ID || "não encontrada",
-            allEnvVars: Object.keys(process.env)
+export default async function handler(req, res) {
+    try {
+        // Testa acesso às variáveis de ambiente essenciais
+        const env = {
+            SHEET_ID: process.env.SHEET_ID,
+            SHEET_TAB: process.env.SHEET_TAB,
+            SHEET_RANGE: process.env.SHEET_RANGE,
+            GOOGLE_SERVICE_ACCOUNT_EMAIL: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+            GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY ? 'OK' : 'MISSING',
+        };
 
-    const telegramVars = {
-        'TELEGRAM_TOKEN': process.env.TELEGRAM_TOKEN || '(não encontrada)',
-        'TELEGRAM_BOT_TOKEN': process.env.TELEGRAM_BOT_TOKEN || '(não encontrada)',
-        'ID_DO_CHAT_DO_TELEGRAM': process.env.ID_DO_CHAT_DO_TELEGRAM || '(não encontrada)',
-        'TELEGRAM_CHAT_ID': process.env.TELEGRAM_CHAT_ID || '(não encontrada)',
-    };
+        // Testa acesso ao Google Sheets (apenas autenticação, sem buscar dados)
+        let authStatus = 'not_tested';
+        try {
+            const { google } = await import('googleapis');
+            const jwt = new google.auth.JWT(
+                process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+                undefined,
+                process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.replace(/\\n/g, '\n'),
+                ['https://www.googleapis.com/auth/spreadsheets.readonly']
+            );
+            await jwt.authorize();
+            authStatus = 'success';
+        } catch (e) {
+            authStatus = e.message;
+        }
 
-    // Lista TODAS as env vars (apenas nomes, sem valores)
-    const allEnvVars = Object.keys(process.env).filter(k => !k.includes('PATH')).sort();
-
-    return res.json({
-        telegramVarsChecked: telegramVars,
-        allEnvVarsCount: allEnvVars.length,
-        allEnvVarsNames: allEnvVars.slice(0, 30), // primeiras 30 para não poluir
-        timestamp: new Date().toISOString()
-    });
+        res.status(200).json({
+            env,
+            googleAuth: authStatus,
+            timestamp: new Date().toISOString(),
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 }

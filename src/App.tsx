@@ -675,7 +675,7 @@ const App: React.FC = () => {
                 const productsWithZero = lowStockAlertProducts.filter(p => p.currentStock === 0);
                 const productsWithOne = lowStockAlertProducts.filter(p => p.currentStock === 1);
                 const productsWithTwo = lowStockAlertProducts.filter(p => p.currentStock === 2);
-                
+
                 let skuNumber = 0;
                 if (isZero) {
                   skuNumber = productsWithZero.findIndex(p => p.id === product.id) + 1;
@@ -969,6 +969,40 @@ const App: React.FC = () => {
         )}
       </div>
 
+      {/* Vendas por Horário */}
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold text-gray-800 mb-2">Vendas por Horário</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatsCard
+            title="Vendas 00h"
+            value={products.reduce((acc, p) => acc + (p.sales_00 || 0), 0)}
+            icon={ArrowUp}
+            color="blue"
+            subtext="Total vendas 00h"
+          />
+          <StatsCard
+            title="Vendas 05h"
+            value={products.reduce((acc, p) => acc + (p.sales_05 || 0), 0)}
+            icon={ArrowUp}
+            color="green"
+            subtext="Total vendas 05h"
+          />
+          <StatsCard
+            title="Vendas 12h"
+            value={products.reduce((acc, p) => acc + (p.sales_12 || 0), 0)}
+            icon={ArrowUp}
+            color="yellow"
+            subtext="Total vendas 12h"
+          />
+          <StatsCard
+            title="Vendas 18h"
+            value={products.reduce((acc, p) => acc + (p.sales_18 || 0), 0)}
+            icon={ArrowUp}
+            color="red"
+            subtext="Total vendas 18h"
+          />
+        </div>
+      </div>
       {/* Área Principal */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Coluna Esquerda */}

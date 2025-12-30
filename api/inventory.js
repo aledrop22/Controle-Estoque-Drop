@@ -49,12 +49,26 @@ function mapRowsToProducts(rows, dateFilter) {
         const stock = parseInt(r[idxEstoque] || '0') || 0;
 
         if (!productHistory[key]) {
-            productHistory[key] = { name, rows: [] };
+            productHistory[key] = { name, rows: [], notifiedZero: false };
         }
         productHistory[key].rows.push({
             date: dateOnly,
             stock,
             rawRow: r
+        });
+        // Notificação de SKU zerado
+        const { sendZeroedNotification } = require('../services/emailService');
+        Object.keys(productHistory).forEach(async key => {
+            const hist = productHistory[key];
+            // Detecta zeramento: estoque passou de 1 para 0
+            if (hist.rows.length >= 2) {
+                const prev = hist.rows[hist.rows.length - 2];
+                const curr = hist.rows[hist.rows.length - 1];
+                if (prev.stock === 1 && curr.stock === 0 && !hist.notifiedZero) {
+                    await sendZeroedNotification(key, hist.name, curr.date);
+                    hist.notifiedZero = true;
+                }
+            }
         });
     });
 

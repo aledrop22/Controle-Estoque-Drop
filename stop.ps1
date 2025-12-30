@@ -1,4 +1,4 @@
-# Para os servidores backend e frontend
+vercel deploy --prod# Para os servidores backend e frontend
 Write-Host "Encerrando servidores..." -ForegroundColor Yellow
 
 # Para processos nas portas 3000 e 4000
