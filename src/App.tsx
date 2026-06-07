@@ -501,6 +501,8 @@ const App: React.FC = () => {
     if (isLoadingInventory) return;
 
     setIsLoadingInventory(true);
+    // Limpa o erro anterior ao iniciar uma nova tentativa
+    setAutoLoadError('');
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 20000);
@@ -564,10 +566,12 @@ const App: React.FC = () => {
       <header className="mb-8 flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Controle de Estoque</h1>
-          {autoLoadError ? (
-            <p className="font-semibold text-red-600">Não foi possível carregar dados da planilha.</p>
-          ) : (
-            !autoLoaded && <p className="font-semibold text-indigo-600">Carregando inventário da planilha...</p>
+          {!autoLoaded && (
+            autoLoadError && !isLoadingInventory ? (
+              <p className="font-semibold text-yellow-600">Exibindo dados de demonstração (API indisponível)</p>
+            ) : (
+              <p className="font-semibold text-indigo-600">Carregando inventário da planilha...</p>
+            )
           )}
         </div>
         <div className="flex items-center gap-2">
