@@ -33,3 +33,23 @@ credentials/**/service-account.json
 
 .vercel
 .env*.local
+
+# Temporary files
+cookie.txt
+storage_state.json
+page_html.txt
+page_screenshot.png
+login_debug.png
+seuarmazemdrop_data.json
+debug-raw-data.json
+frontend.log.err
+metadata.json
+test-email.*
+
+# Subprojects (if not needed)
+Controle-Estoque-Drop/
+SCRAP_DROP_WSL-UBUNTU/
+
+# Virtual environments
+.venv/
+.sixth/

@@ -23,11 +23,9 @@
 
 **Para as Environment Variables normais:**
 ```bash
-SHEET_ID=seu_sheet_id_da_planilha_aqui
-GOOGLE_SERVICE_ACCOUNT_EMAIL=seu_email@projeto.iam.gserviceaccount.com
-GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----
-sua_chave_privada_completa_aqui_com_quebras_de_linha
------END PRIVATE KEY-----
+VITE_SUPABASE_URL=https://seu-projeto.supabase.co
+VITE_SUPABASE_ANON_KEY=sua_chave_anon_publica
+SUPABASE_SERVICE_KEY=sua_chave_service_role_privada
 VITE_GEMINI_API_KEY=sua_chave_gemini_opcional
 ```
 
@@ -60,22 +58,15 @@ vercel secrets add vite_gemini_api_key "SUA_CHAVE_AQUI"
 
 #### 📝 Dicas Importantes:
 
-- **SHEET_ID**: ID da sua planilha Google (está no `.env` local)
-- **GOOGLE_SERVICE_ACCOUNT_EMAIL**: Email da conta de serviço
-- **GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY**: 
-  - Cole a chave **COMPLETA** incluindo `-----BEGIN PRIVATE KEY-----` e `-----END PRIVATE KEY-----`
-  - Se tiver `\n` no texto, **mantenha** (o código já converte)
+- **VITE_SUPABASE_URL**: URL do seu projeto Supabase (obtido em Settings → API)
+- **VITE_SUPABASE_ANON_KEY**: Chave pública anon do Supabase (obtido em Settings → API)
+- **SUPABASE_SERVICE_KEY**: Chave privada service role (obtido em Settings → API)
+  - **OBRIGATÓRIO** para a API funcionar
+  - Nunca exponha esta chave no frontend
 - **VITE_GEMINI_API_KEY**: 
   - **OBRIGATÓRIO** estar nas 3 environments (Production, Preview, Development)
   - Ou configure como secret (veja acima)
   - Sem ela, os insights de IA não funcionarão
-
-#### 🔐 Permissões da Planilha
-Certifique-se que o email da Service Account tem acesso à planilha:
-1. Abra sua planilha no Google Sheets
-2. Clique em **Compartilhar**
-3. Adicione o email `GOOGLE_SERVICE_ACCOUNT_EMAIL`
-4. Defina permissão como **Visualizador**
 
 ---
 
@@ -134,13 +125,12 @@ https://seu-projeto.vercel.app/api/inventory?today=1
 
 ### 3. Teste o Debug de Ambiente
 ```
-https://seu-projeto.vercel.app/api/debug-env
+https://seu-projeto.vercel.app/api/inventory-supabase
 ```
 
 **Verifique:**
-- `SHEET_ID: presente`
-- `PRIVATE_KEY_PRESENT: true`
-- `JWT_INITIALIZED: true`
+- Retorna array de produtos do Supabase
+- Sem erros de credenciais
 
 ### 4. Abra o Dashboard
 ```
@@ -180,24 +170,24 @@ O dashboard deve carregar normalmente, sem erros no console.
 
 ### ❌ Erro 500 nas APIs
 
-**Causa:** Chave privada malformatada ou permissões da planilha
+**Causa:** Credenciais Supabase incorretas ou faltando
 
 **Solução:**
-1. Verifique se a chave tem `-----BEGIN` e `-----END`
-2. Confirme que a Service Account está compartilhada na planilha
-3. Teste localmente primeiro com `.\start.ps1`
+1. Verifique se VITE_SUPABASE_URL e SUPABASE_SERVICE_KEY estão configuradas no Vercel
+2. Teste localmente primeiro com `.\start.ps1`
+3. Verifique as tabelas do Supabase (products e inventory_history) existem
 
 ---
 
 ### ❌ Dashboard carrega mas não mostra produtos
 
-**Causa:** API retorna array vazio
+**Causa:** API retorna array vazio ou Supabase sem dados
 
 **Solução:**
-1. Abra `/api/inventory?today=1` no navegador
+1. Abra `/api/inventory-supabase` no navegador
 2. Verifique se `products: []` está vazio
-3. Teste sem o filtro: `/api/inventory`
-4. Verifique se os dados na planilha têm a coluna "Data da Coleta" preenchida
+3. Verifique se o scraper está enviando dados para o Supabase
+4. Confirme que as tabelas products e inventory_history têm dados
 
 ---
 
@@ -212,20 +202,25 @@ O dashboard deve carregar normalmente, sem erros no console.
 
 ---
 
-## 📊 Estrutura de Dados da Planilha
+## 📊 Estrutura de Dados do Supabase
 
-Para funcionar corretamente, sua planilha deve ter:
+Para funcionar corretamente, seu Supabase deve ter:
 
-| Data da Coleta | ID do Produto | Produto | Estoque | Preço |
-|----------------|---------------|---------|---------|-------|
-| 2025-11-28     | 001           | Item A  | 100     | 10.50 |
-| 2025-11-27     | 001           | Item A  | 95      | 10.50 |
+**Tabela `products`:**
+- id (text, primary key)
+- name (text)
+- stock (integer)
+- price (numeric)
+- url (text, optional)
+- created_at (timestamp)
 
-**Colunas obrigatórias:**
-- Data da Coleta (formato: YYYY-MM-DD)
-- Produto (nome)
-- Estoque (número)
-- Preço (número)
+**Tabela `inventory_history`:**
+- id (uuid, primary key)
+- product_id (text, foreign key)
+- date (date)
+- quantity (integer)
+- price (numeric)
+- created_at (timestamp)
 
 ---
 
@@ -235,7 +230,7 @@ Quando tudo estiver funcionando, você terá:
 
 ✅ Dashboard sempre online (24/7)  
 ✅ Acesso de qualquer lugar (só precisa do link)  
-✅ Dados atualizados da planilha (cache de 1 minuto)  
+✅ Dados atualizados do Supabase (cache de 1 minuto)  
 ✅ Filtro por data automático  
 ✅ Métricas e gráficos em tempo real  
 ✅ Top vendas por período  
@@ -279,10 +274,9 @@ Se continuar com problemas:
 
 ## ✨ Está Tudo Certo Quando:
 
-- ✅ `/api/health` retorna `{"ok": true}`
-- ✅ `/api/inventory` retorna array de produtos
+- ✅ `/api/inventory-supabase` retorna array de produtos
 - ✅ Dashboard carrega sem mensagem de erro
-- ✅ Dados da planilha aparecem na tabela
+- ✅ Dados do Supabase aparecem na tabela
 - ✅ Pode acessar de qualquer navegador/dispositivo
 
 **Pronto! Seu dashboard está 100% operacional no Vercel! 🎉**
