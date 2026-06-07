@@ -504,7 +504,7 @@ const App: React.FC = () => {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 20000);
-      const url = mode === 'today' ? '/api/inventory?today=1' : '/api/inventory';
+      const url = mode === 'today' ? '/api/inventory-supabase?today=1' : '/api/inventory-supabase';
       const resp = await fetch(url, { signal: controller.signal });
       clearTimeout(timeout);
       if (!resp.ok) throw new Error(`Falha ao consultar ${url} (status ${resp.status})`);
@@ -565,9 +565,9 @@ const App: React.FC = () => {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Controle de Estoque</h1>
           {autoLoadError ? (
-            <p className="font-semibold text-red-600">Não foi possível carregar dados da planilha.</p>
+            <p className="font-semibold text-red-600">Não foi possível carregar dados do Supabase.</p>
           ) : (
-            !autoLoaded && <p className="font-semibold text-indigo-600">Carregando inventário da planilha...</p>
+            !autoLoaded && <p className="font-semibold text-indigo-600">Carregando inventário do Supabase...</p>
           )}
         </div>
         <div className="flex items-center gap-2">

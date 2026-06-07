@@ -15,6 +15,11 @@ dist-ssr
 # Environment variables
 .env
 
+# Credentials folder (contains sensitive files)
+credentials/**/credentials.json
+credentials/**/*.key
+credentials/**/service-account.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
