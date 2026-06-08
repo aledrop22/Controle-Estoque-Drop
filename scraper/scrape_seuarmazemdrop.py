@@ -1,53 +1,161 @@
 import os
 import json
-import requests
+import re
 from datetime import datetime
+from playwright.sync_api import sync_playwright
 from supabase_api import SupabaseAPI
 
 # Configuration
 BASE_URL = "https://app.seuarmazemdrop.com.br"
+CATALOG_URL = f"{BASE_URL}/dashboard/catalog"
 OUTPUT_FILE = "seuarmazemdrop_data.json"
+TOTAL_PAGES = 8
+PER_PAGE = 100
 
 # Supabase Configuration
 SUPABASE_URL = os.getenv("VITE_SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 USER_ID = os.getenv("SUPABASE_USER_ID", "default-user")
 
+def extract_value(text, prefix):
+    """Extract value after prefix from text"""
+    if prefix in text:
+        return text.split(prefix)[1].strip()
+    return ""
+
+def clean_price(price_text):
+    """Clean price text and convert to float"""
+    # Remove R$ and spaces
+    cleaned = price_text.replace("R$", "").replace(" ", "").strip()
+    # Replace comma with dot for decimal
+    cleaned = cleaned.replace(",", ".")
+    try:
+        return float(cleaned)
+    except:
+        return 0.0
+
+def clean_stock(stock_text):
+    """Clean stock text and extract number"""
+    # Extract number from text like "300 pcs"
+    match = re.search(r'\d+', stock_text)
+    if match:
+        return int(match.group())
+    return 0
+
+def extract_id_from_description(description):
+    """Extract product ID from description like (SAD14123)"""
+    match = re.search(r'\((SAD\d+)\)', description)
+    if match:
+        return match.group(1)
+    return ""
+
 def scrape_products():
-    """Scrape products from SeuArmazemDrop"""
-    print(f"🔍 Scraping {BASE_URL}...")
-    
-    # This is a simplified scraper - you may need to adjust selectors
-    # For now, we'll create sample data to test the flow
+    """Scrape products from SeuArmazemDrop using Playwright"""
+    print(f"🔍 Scraping {CATALOG_URL}...")
     
     products = []
     
-    # Sample data for testing (replace with actual scraping logic)
-    sample_products = [
-        {
-            'id': 'SAD14123',
-            'name': '(SAD14123) Prata - Cortina Blackout',
-            'stock': 150,
-            'price': 5.00,
-            'url': f'{BASE_URL}/product/sad14123'
-        },
-        {
-            'id': 'SAD14124',
-            'name': '(SAD14124) Preto - Cortina Blackout',
-            'stock': 200,
-            'price': 5.50,
-            'url': f'{BASE_URL}/product/sad14124'
-        },
-        {
-            'id': 'SAD14125',
-            'name': '(SAD14125) Branco - Cortina Blackout',
-            'stock': 180,
-            'price': 4.90,
-            'url': f'{BASE_URL}/product/sad14125'
-        }
-    ]
-    
-    products.extend(sample_products)
+    with sync_playwright() as p:
+        # Check if storage_state.json exists
+        if not os.path.exists("storage_state.json"):
+            print("⚠️  storage_state.json não encontrado. Execute python obter_cookie.py primeiro")
+            return []
+        
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context(storage_state="storage_state.json")
+        page = context.new_page()
+        
+        try:
+            # Navigate to catalog
+            page.goto(CATALOG_URL, wait_until="networkidle")
+            
+            # Set pagination to 100 items per page
+            print("⚙️  Configurando paginação para 100 itens...")
+            page.select_option("#perPage", "100")
+            page.wait_for_timeout(2000)
+            
+            # Scrape all pages
+            for page_num in range(1, TOTAL_PAGES + 1):
+                print(f"📄 Página {page_num}/{TOTAL_PAGES}...")
+                
+                # Wait for products to load
+                page.wait_for_selector("a.text-dark", timeout=10000)
+                
+                # Get all product cards
+                product_links = page.locator("a.text-dark").all()
+                
+                for link in product_links:
+                    try:
+                        # Get product URL
+                        product_url = link.get_attribute("href")
+                        if not product_url:
+                            continue
+                        
+                        # Get description
+                        description = link.inner_text().strip()
+                        product_id = extract_id_from_description(description)
+                        
+                        # Get parent card to extract other data
+                        card = link.locator("xpath=ancestor::div[contains(@class, 'card')]").first
+                        
+                        # Extract image
+                        image_elem = card.locator("img[alt='product-pic']").first
+                        image = image_elem.get_attribute("src") if image_elem.is_visible() else ""
+                        
+                        # Extract price
+                        price_elem = card.locator("div.product-price-tag").first
+                        price_text = price_elem.inner_text().strip() if price_elem.is_visible() else "R$ 0,00"
+                        price = clean_price(price_text)
+                        
+                        # Extract color, size, stock from h5 elements
+                        h5_elements = card.locator("h5.m-0 span.text-muted").all()
+                        color = ""
+                        size = ""
+                        stock = 0
+                        
+                        for h5 in h5_elements:
+                            text = h5.inner_text().strip()
+                            if "Cor :" in text:
+                                color = extract_value(text, "Cor :")
+                            elif "Tamanho :" in text:
+                                size = extract_value(text, "Tamanho :")
+                            elif "Estoque :" in text:
+                                stock = clean_stock(text)
+                        
+                        product = {
+                            'id': product_id,
+                            'name': description,
+                            'stock': stock,
+                            'price': price,
+                            'url': f"{BASE_URL}{product_url}",
+                            'image': image,
+                            'color': color,
+                            'size': size
+                        }
+                        
+                        products.append(product)
+                        print(f"  ✓ {product_id}: {description[:50]}...")
+                        
+                    except Exception as e:
+                        print(f"  ✗ Erro ao extrair produto: {e}")
+                        continue
+                
+                # Navigate to next page if not last page
+                if page_num < TOTAL_PAGES:
+                    try:
+                        next_page = page.locator("li.page-item.active + li.page-item a").first
+                        if next_page.is_visible():
+                            next_page.click()
+                            page.wait_for_timeout(2000)
+                        else:
+                            print(f"📄 Não há mais páginas. Parando na página {page_num}")
+                            break
+                    except:
+                        print(f"📄 Não foi possível ir para a próxima página. Parando na página {page_num}")
+                        break
+            
+        finally:
+            browser.close()
     
     # Save to JSON file
     with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
