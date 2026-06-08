@@ -49,6 +49,11 @@ def extract_id_from_description(description):
         return match.group(1)
     return ""
 
+def save_progress(products):
+    """Save products to JSON file"""
+    with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
+        json.dump(products, f, indent=2, ensure_ascii=False)
+
 def scrape_products():
     """Scrape products from SeuArmazemDrop using Playwright"""
     print(f"🔍 Scraping {CATALOG_URL}...")
@@ -59,6 +64,7 @@ def scrape_products():
         print(f"🗑️  Arquivo {OUTPUT_FILE} removido (limpeza automática)")
     
     products = []
+    save_interval = 50  # Salvar a cada 50 produtos
     
     with sync_playwright() as p:
         # Check if storage_state.json exists
@@ -74,17 +80,36 @@ def scrape_products():
             # Navigate to catalog
             page.goto(CATALOG_URL, wait_until="networkidle")
             
+            # Fechar pop-up de aviso se aparecer
+            try:
+                page.wait_for_timeout(1000)
+                close_button = page.locator("button.btn-close").first
+                if close_button.is_visible(timeout=2000):
+                    close_button.click()
+                    print("✅ Pop-up de aviso fechado")
+                    page.wait_for_timeout(500)
+            except:
+                # Tentar fechar pelo botão "Fechar"
+                try:
+                    fechar_button = page.locator("button.btn-light:has-text('Fechar')").first
+                    if fechar_button.is_visible(timeout=1500):
+                        fechar_button.click()
+                        print("✅ Pop-up de aviso fechado (botão Fechar)")
+                        page.wait_for_timeout(500)
+                except:
+                    pass  # Pop-up não encontrado, continuar
+            
             # Set pagination to 100 items per page
             print("⚙️  Configurando paginação para 100 itens...")
             page.select_option("#perPage", "100")
-            page.wait_for_timeout(2000)
+            page.wait_for_timeout(1000)
             
             # Scrape all pages
             for page_num in range(1, TOTAL_PAGES + 1):
                 print(f"📄 Página {page_num}/{TOTAL_PAGES}...")
                 
                 # Wait for products to load
-                page.wait_for_selector("a.text-dark", timeout=10000)
+                page.wait_for_selector("a.text-dark", timeout=5000)
                 
                 # Get all product cards
                 product_links = page.locator("a.text-dark").all()
@@ -141,6 +166,11 @@ def scrape_products():
                         products.append(product)
                         print(f"  ✓ {product_id}: {description[:50]}...")
                         
+                        # Salvar progresso a cada 50 produtos
+                        if len(products) % save_interval == 0:
+                            save_progress(products)
+                            print(f"💾 Progresso salvo: {len(products)} produtos")
+                        
                     except Exception as e:
                         print(f"  ✗ Erro ao extrair produto: {e}")
                         continue
@@ -151,7 +181,7 @@ def scrape_products():
                         next_page = page.locator("li.page-item.active + li.page-item a").first
                         if next_page.is_visible():
                             next_page.click()
-                            page.wait_for_timeout(2000)
+                            page.wait_for_timeout(1000)
                         else:
                             print(f"📄 Não há mais páginas. Parando na página {page_num}")
                             break
@@ -162,9 +192,8 @@ def scrape_products():
         finally:
             browser.close()
     
-    # Save to JSON file
-    with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
-        json.dump(products, f, indent=2, ensure_ascii=False)
+    # Save final results to JSON file
+    save_progress(products)
     
     print(f"✅ Scraping concluído: {len(products)} produtos salvos em {OUTPUT_FILE}")
     return products
