@@ -15,6 +15,8 @@ export interface Product {
   url?: string;
   captureDate?: string; // Data de entrada/coleta do produto
   history: DailySnapshot[]; // Sorted by date ascending
+  isNew?: boolean; // Indica se o produto é novo (últimos 7 dias)
+  daysSinceEntry?: number; // Dias desde a entrada do produto
 }
 
 export interface ProductAnalysis {

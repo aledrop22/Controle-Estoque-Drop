@@ -101,31 +101,28 @@ const App: React.FC = () => {
     return dates[dates.length - 1] || null;
   }, [products]);
 
-  // Novos produtos (primeiro registro exatamente na última data)
+  // Novos produtos (baseado na data de entrada/captureDate)
   const newProducts = useMemo(() => {
-    if (!latestDate) return [] as Product[];
-
-    const today = new Date(latestDate);
+    const today = new Date();
     const sevenDaysAgo = new Date(today);
     sevenDaysAgo.setDate(today.getDate() - 7);
     const sevenDaysAgoStr = sevenDaysAgo.toISOString().slice(0, 10);
 
     return products.filter(p => {
-      if (!p.history || p.history.length === 0) return false;
-      const firstDate = p.history[0].date;
-      // Mostra produtos cujo primeiro registro é nos últimos 7 dias ou mais antigo
-      return firstDate >= sevenDaysAgoStr;
+      if (!p.captureDate) return false;
+      // Mostra produtos cuja data de entrada é nos últimos 7 dias
+      return p.captureDate >= sevenDaysAgoStr;
     }).map(p => {
-      const firstDate = p.history[0].date;
-      const daysDiff = Math.floor((today.getTime() - new Date(firstDate).getTime()) / (1000 * 60 * 60 * 24));
+      const entryDate = p.captureDate;
+      const daysDiff = Math.floor((today.getTime() - new Date(entryDate).getTime()) / (1000 * 60 * 60 * 24));
       return { ...p, isNew: daysDiff <= 7, daysSinceEntry: daysDiff };
     }).sort((a, b) => {
       // Ordena por data de entrada (mais recente primeiro)
-      const dateA = new Date(a.history[0].date).getTime();
-      const dateB = new Date(b.history[0].date).getTime();
+      const dateA = new Date(a.captureDate || '').getTime();
+      const dateB = new Date(b.captureDate || '').getTime();
       return dateB - dateA;
     }).slice(0, 10); // Máximo 10 produtos
-  }, [products, latestDate]);
+  }, [products]);
 
   // Ajustes de Preço (últimos 7 dias)
   const priceAdjustments = useMemo(() => {
