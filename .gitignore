@@ -58,3 +58,4 @@ SCRAP_DROP_WSL-UBUNTU/
 scraper/*.json
 scraper/__pycache__/
 scraper/storage_state.json
+scraper/seuarmazemdrop_data.json
