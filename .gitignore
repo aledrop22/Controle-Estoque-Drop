@@ -53,3 +53,8 @@ SCRAP_DROP_WSL-UBUNTU/
 # Virtual environments
 .venv/
 .sixth/
+
+# Scraper data
+scraper/*.json
+scraper/__pycache__/
+scraper/storage_state.json
