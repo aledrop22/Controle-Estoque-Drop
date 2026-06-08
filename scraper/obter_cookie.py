@@ -6,8 +6,8 @@ def main():
     print("🔐 Obtendo cookie de autenticação do SeuArmazemDrop...")
     
     # Configurações de login (substitua com suas credenciais)
-    EMAIL = os.getenv("SEUARMAZEMDROP_EMAIL", "")
-    PASSWORD = os.getenv("SEUARMAZEMDROP_PASSWORD", "")
+    EMAIL = os.getenv("renidreshop@gmail.com")
+    PASSWORD = os.getenv("36180")
     
     if not EMAIL or not PASSWORD:
         print("⚠️  Configure SEUARMAZEMDROP_EMAIL e SEUARMAZEMDROP_PASSWORD no .env")

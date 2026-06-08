@@ -53,6 +53,11 @@ def scrape_products():
     """Scrape products from SeuArmazemDrop using Playwright"""
     print(f"🔍 Scraping {CATALOG_URL}...")
     
+    # Limpar arquivo JSON anterior se existir
+    if os.path.exists(OUTPUT_FILE):
+        os.remove(OUTPUT_FILE)
+        print(f"🗑️  Arquivo {OUTPUT_FILE} removido (limpeza automática)")
+    
     products = []
     
     with sync_playwright() as p:
