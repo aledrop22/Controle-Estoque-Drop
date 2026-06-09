@@ -57,17 +57,17 @@ if (Test-Path ".env") {
     Write-Host "📋 Lendo valores do .env..." -ForegroundColor Yellow
     
     # Configurar secrets
-    $seuEmail = ($envContent | Where-Object { $_.Key -eq "SEUARMAZEMDROP_EMAIL" }).Value
-    $seuPassword = ($envContent | Where-Object { $_.Key -eq "SEUARMAZEMDROP_PASSWORD" }).Value
+    $seuEmail = ($envContent | Where-Object { $_.Key -eq "EMAIL" }).Value
+    $seuPassword = ($envContent | Where-Object { $_.Key -eq "PASSWORD" }).Value
     $supabaseUrl = ($envContent | Where-Object { $_.Key -eq "VITE_SUPABASE_URL" }).Value
     $supabaseKey = ($envContent | Where-Object { $_.Key -eq "SUPABASE_SERVICE_KEY" }).Value
     $supabaseUserId = ($envContent | Where-Object { $_.Key -eq "SUPABASE_USER_ID" }).Value
     
     if (-not $seuEmail) {
-        $seuEmail = Read-Host "Digite SEUARMAZEMDROP_EMAIL"
+        $seuEmail = Read-Host "Digite EMAIL"
     }
     if (-not $seuPassword) {
-        $seuPassword = Read-Host "Digite SEUARMAZEMDROP_PASSWORD" -AsSecureString | ConvertFrom-SecureString -AsPlainText
+        $seuPassword = Read-Host "Digite PASSWORD" -AsSecureString | ConvertFrom-SecureString -AsPlainText
     }
     if (-not $supabaseUrl) {
         $supabaseUrl = "https://lroxouwlciplbvitqzmh.supabase.co"
@@ -128,8 +128,8 @@ print(base64.b64encode(encrypted).decode())
     
     # Adicionar secrets
     $secrets = @{
-        "SEUARMAZEMDROP_EMAIL" = $seuEmail
-        "SEUARMAZEMDROP_PASSWORD" = $seuPassword
+        "EMAIL" = $seuEmail
+        "PASSWORD" = $seuPassword
         "VITE_SUPABASE_URL" = $supabaseUrl
         "SUPABASE_SERVICE_KEY" = $supabaseKey
         "SUPABASE_USER_ID" = $supabaseUserId

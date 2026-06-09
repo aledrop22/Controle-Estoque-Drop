@@ -27,8 +27,8 @@ jobs:
       
       - name: Get authentication cookie
         env:
-          SEUARMAZEMDROP_EMAIL: ${{ secrets.SEUARMAZEMDROP_EMAIL }}
-          SEUARMAZEMDROP_PASSWORD: ${{ secrets.SEUARMAZEMDROP_PASSWORD }}
+          EMAIL: ${{ secrets.EMAIL }}
+          PASSWORD: ${{ secrets.PASSWORD }}
         run: |
           cd scraper
           python obter_cookie.py

@@ -2,8 +2,14 @@ import os
 import json
 import re
 from datetime import datetime
+from pathlib import Path
 from playwright.sync_api import sync_playwright
+from dotenv import load_dotenv
 from supabase_api import SupabaseAPI
+
+# Carregar .env do diretório pai
+env_path = Path(__file__).parent.parent / '.env'
+load_dotenv(env_path)
 
 # Configuration
 BASE_URL = "https://app.seuarmazemdrop.com.br"
@@ -42,12 +48,18 @@ def clean_stock(stock_text):
         return int(match.group())
     return 0
 
-def extract_id_from_description(description):
-    """Extract product ID from description like (SAD14123)"""
+def extract_id_from_description(description, index):
+    """Extract product ID from description like (SAD14123) or (JACKZWJ000001)"""
+    # Tenta SAD primeiro
     match = re.search(r'\((SAD\d+)\)', description)
     if match:
         return match.group(1)
-    return ""
+    # Tenta JACK ou outros padrões
+    match = re.search(r'\(([A-Z]+\d+)\)', description)
+    if match:
+        return match.group(1)
+    # Se não encontrar ID, gera ID automático
+    return f"AUTO{index:04d}"
 
 def save_progress(products):
     """Save products to JSON file"""
@@ -101,18 +113,33 @@ def scrape_products():
             
             # Set pagination to 100 items per page
             print("⚙️  Configurando paginação para 100 itens...")
-            page.select_option("#perPage", "100")
-            page.wait_for_timeout(1000)
+            try:
+                page.select_option("#perPage", "100")
+                page.wait_for_timeout(1000)
+            except:
+                print("⚠️  Não foi possível configurar paginação. Continuando com padrão.")
             
             # Scrape all pages
             for page_num in range(1, TOTAL_PAGES + 1):
                 print(f"📄 Página {page_num}/{TOTAL_PAGES}...")
                 
                 # Wait for products to load
-                page.wait_for_selector("a.text-dark", timeout=5000)
+                try:
+                    page.wait_for_selector("a.text-dark", timeout=5000)
+                except:
+                    print("⚠️  Seletor 'a.text-dark' não encontrado. Tentando seletor alternativo...")
+                    try:
+                        page.wait_for_selector("a[href*='/product/']", timeout=5000)
+                    except:
+                        print("❌ Nenhum produto encontrado na página. Verifique se o login expirou.")
+                        print("💡 Execute 'python obter_cookie.py' para renovar o login.")
+                        break
                 
                 # Get all product cards
-                product_links = page.locator("a.text-dark").all()
+                try:
+                    product_links = page.locator("a.text-dark").all()
+                except:
+                    product_links = page.locator("a[href*='/product/']").all()
                 
                 for link in product_links:
                     try:
@@ -123,7 +150,7 @@ def scrape_products():
                         
                         # Get description
                         description = link.inner_text().strip()
-                        product_id = extract_id_from_description(description)
+                        product_id = extract_id_from_description(description, len(products) + 1)
                         
                         # Get parent card to extract other data
                         card = link.locator("xpath=ancestor::div[contains(@class, 'card')]").first
@@ -153,6 +180,7 @@ def scrape_products():
                                 stock = clean_stock(text)
                         
                         product = {
+                            'index': len(products) + 1,  # Ordem de raspagem
                             'id': product_id,
                             'name': description,
                             'stock': stock,

@@ -17,6 +17,10 @@ def run_command(cmd, description):
 def main():
     print("🚀 Iniciando processo completo de scraping e deploy...")
     
+    # Mudar para diretório scraper
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(script_dir)
+    
     # Step 1: Get authentication cookie
     if not os.path.exists("storage_state.json"):
         print("\n📋 Step 1: Obtendo cookie de autenticação...")
