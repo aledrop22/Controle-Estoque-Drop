@@ -45,41 +45,25 @@ Abra a URL exibida (normalmente `http://localhost:5173`). Se a seção de insigh
 - Erro 401/403: confirme se a chave é válida e não foi revogada.
 - Mudou a chave: atualize `.env` e reinicie o servidor.
 
-## Integração Segura com Google Sheets (Backend)
+## Integração com Supabase
 
-Para não expor sua planilha publicamente, use o servidor Node incluído que lê via **Google Sheets API** usando Service Account.
+O dashboard usa Supabase como banco de dados principal. Configure as credenciais no `.env`:
 
-### Passos
-1. Crie Service Account (Google Cloud) e ative API Sheets.
-2. Compartilhe a planilha com o e-mail da Service Account (Leitura).
-3. Copie `client_email` e `private_key` do JSON da credencial.
-4. Configure `.env`:
 ```
-SHEET_ID=ID_DA_PLANILHA
-SHEET_TAB=NomeDaAba        # opcional
-SHEET_RANGE=A:E            # opcional
-GOOGLE_SERVICE_ACCOUNT_EMAIL=client_email
-GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nLINHAS\n-----END PRIVATE KEY-----\n"
+VITE_SUPABASE_URL=https://seu-project-id.supabase.co
+VITE_SUPABASE_ANON_KEY=sua-chave-anon
+SUPABASE_SERVICE_KEY=sua-chave-service
 ```
-5. Instale dependências: `npm install`
-6. Rode backend: `npm run api`
-7. Rode front em outro terminal: `npm run dev`
 
-O front tenta `/api/inventory`. Se falhar, mostra aviso e usa mock; você pode importar CSV manualmente pelo botão.
-
-### Endpoint
-- `GET /api/inventory` -> `{ source, products }`
-- Cache interno de 1 minuto.
+### API Endpoints
+- `GET /api/inventory-supabase` -> `{ source, filterDate, products }`
+- `GET /api/health` -> Status do servidor
 
 ### Teste
 ```powershell
 Invoke-WebRequest http://localhost:4000/api/health
-Invoke-WebRequest http://localhost:4000/api/inventory
+Invoke-WebRequest http://localhost:4000/api/inventory-supabase
 ```
-
-### Boas Práticas
-- Não commitar `.env`.
-- Rotacionar chave se suspeitar de vazamento.
 
 ---
 View your app in AI Studio: https://ai.studio/apps/drive/1YZvAZP3rTI1jOJgkejIQrbgCN2dwzphS
