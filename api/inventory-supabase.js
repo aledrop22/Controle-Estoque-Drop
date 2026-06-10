@@ -62,7 +62,10 @@ export default async function handler(req, res) {
 
         if (historyError) {
             console.error('Erro ao buscar histórico do Supabase:', historyError);
+            // Continuar mesmo sem histórico
         }
+
+        console.log('[DEBUG] Histórico buscado:', inventoryHistory?.length || 0);
 
         // Agrupar histórico por produto
         const historyByProduct = {};
