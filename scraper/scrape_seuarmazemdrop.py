@@ -63,43 +63,45 @@ def extract_id_from_description(description, index):
     # Se não encontrar ID, gera ID automático
     return f"AUTO{index:04d}"
 
-def save_progress(products, append=False):
-    """Save products to JSON file"""
-    existing_products = []
-    if append and os.path.exists(OUTPUT_FILE):
-        try:
-            with open(OUTPUT_FILE, 'r', encoding='utf-8') as f:
-                existing_products = json.load(f)
-                print(f"📂 Carregados {len(existing_products)} produtos existentes")
-        except:
-            existing_products = []
-    
-    all_products = existing_products + products
+def save_progress(products):
+    """Save products to JSON file (sobrescreve completamente)"""
     with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
-        json.dump(all_products, f, indent=2, ensure_ascii=False)
-    return all_products
+        json.dump(products, f, indent=2, ensure_ascii=False)
+    return products
 
-def scrape_products():
-    """Scrape products from SeuArmazemDrop using Playwright"""
+def scrape_products(resume=False):
+    """Scrape products from SeuArmazemDrop using Playwright
+    
+    Args:
+        resume: Se True, continua raspagem de onde parou. Se False, começa do zero.
+    """
     print(f"🔍 Scraping {CATALOG_URL}...")
     
-    # Carregar produtos existentes se houver
+    # Carregar produtos existentes apenas se resume=True
     existing_products = []
-    if os.path.exists(OUTPUT_FILE):
+    existing_ids = set()
+    
+    if resume and os.path.exists(OUTPUT_FILE):
         try:
             with open(OUTPUT_FILE, 'r', encoding='utf-8') as f:
                 existing_products = json.load(f)
-                print(f"� Carregados {len(existing_products)} produtos existentes do JSON")
+                existing_ids = set(p['id'] for p in existing_products)
+                print(f"📂 Carregados {len(existing_products)} produtos existentes do JSON (modo resume)")
+                print(f"📋 {len(existing_ids)} IDs únicos já existentes")
         except:
             existing_products = []
+            existing_ids = set()
+    elif os.path.exists(OUTPUT_FILE):
+        print(f"⚠️  Arquivo {OUTPUT_FILE} existe.")
+        print(f"💡 Modo limpo: começando do zero (arquivo será sobrescrito)")
+        print(f"   Use resume=True para continuar de onde parou")
     
-    products = existing_products  # Começar com produtos existentes
-    start_index = len(existing_products)  # Índice para novos produtos
+    products = []  # Sempre começar com lista vazia para evitar duplicatas
+    start_index = 0  # Índice começa do zero
     save_interval = 50  # Salvar a cada 50 produtos
     
-    # Criar set de IDs existentes para evitar duplicatas
-    existing_ids = set(p['id'] for p in existing_products)
-    print(f"📋 {len(existing_ids)} IDs únicos já existentes")
+    if not resume:
+        print(f"🆕 Iniciando raspagem do zero (sem produtos existentes)")
     
     # Obter credenciais
     EMAIL = os.getenv("EMAIL") or os.getenv("SEUARMAZEMDROP_EMAIL")
@@ -278,11 +280,13 @@ def scrape_products():
             except Exception as e:
                 print(f"⚠️  Erro ao detectar páginas: {e}, usando padrão: {TOTAL_PAGES}")
             
-            # Calcular página inicial baseada nos produtos existentes
-            start_page = (len(existing_products) // PER_PAGE) + 1
+            # Calcular página inicial baseada nos produtos existentes (apenas se resume=True)
+            start_page = 1
+            if resume and existing_products:
+                start_page = (len(existing_products) // PER_PAGE) + 1
             
             print(f"📊 Produtos existentes: {len(existing_products)}")
-            print(f"📄 Continuando da página {start_page}/{total_pages_detected}...")
+            print(f"📄 Começando da página {start_page}/{total_pages_detected}...")
             
             # Se não estiver na página inicial, navegar para ela
             if start_page > 1:
@@ -347,6 +351,11 @@ def scrape_products():
                         description = link.inner_text().strip()
                         product_id = extract_id_from_description(description, start_index + len(products) + 1)
                         
+                        # Verificar duplicatas (apenas se resume=True)
+                        if resume and product_id in existing_ids:
+                            print(f"  ⏭️  {product_id}: já existe, pulando...")
+                            continue
+                        
                         # Get parent card to extract other data
                         card = link.locator("xpath=ancestor::div[contains(@class, 'card')]").first
                         
@@ -378,7 +387,7 @@ def scrape_products():
                                     print(f"    📦 Estoque extraído: {stock} (texto original: '{text}')")
                         
                         product = {
-                            'index': start_index + len(products) + 1,  # Ordem de raspagem (continuando dos existentes)
+                            'index': len(products) + 1,  # Index sequencial baseado nos produtos coletados
                             'id': product_id,
                             'name': description,
                             'stock': stock,
@@ -389,18 +398,14 @@ def scrape_products():
                             'size': size
                         }
                         
-                        # Verificar se o ID já existe para evitar duplicatas
-                        if product_id in existing_ids:
-                            print(f"  ⏭️  {product_id}: já existe, pulando...")
-                            continue
-                        
                         products.append(product)
-                        existing_ids.add(product_id)  # Adicionar ao set de IDs existentes
+                        if resume:
+                            existing_ids.add(product_id)  # Adicionar ao set de IDs existentes
                         print(f"  ✓ {product_id}: {description[:50]}...")
                         
                         # Salvar progresso a cada 50 produtos
                         if len(products) % save_interval == 0:
-                            save_progress(products, append=True)
+                            save_progress(products)
                             print(f"💾 Progresso salvo: {len(products)} produtos")
                         
                     except Exception as e:
@@ -424,8 +429,13 @@ def scrape_products():
         finally:
             browser.close()
     
-    # Save final results to JSON file
-    final_products = save_progress(products, append=True)
+    # Salvar resultados finais (mesclando com existentes se resume=True)
+    if resume and existing_products:
+        final_products = existing_products + products
+    else:
+        final_products = products
+    
+    save_progress(final_products)
     
     print(f"✅ Scraping concluído: {len(final_products)} produtos salvos em {OUTPUT_FILE}")
     print(f"   (Novos produtos: {len(products)}, Total: {len(final_products)})")
@@ -434,10 +444,11 @@ def scrape_products():
 def main():
     print("🚀 Iniciando scraper SeuArmazemDrop...")
     
-    # Scrape products
-    products = scrape_products()
+    # Scrape products (modo limpo por padrão - começa do zero)
+    # Use resume=True para continuar de onde parou
+    products = scrape_products(resume=False)
     
-    # Send to Supabase if configured
+    # Send to Supabase se configurado
     if SUPABASE_URL and SUPABASE_SERVICE_KEY:
         try:
             print("\n📤 Enviando dados para Supabase...")
