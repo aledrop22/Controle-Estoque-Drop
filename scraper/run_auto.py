@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sys
+import json
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -23,6 +24,10 @@ def run_command(cmd, description):
 def main():
     print("🚀 Iniciando processo AUTOMÁTICO de scraping...")
     print("⚠️  Configure SEUARMAZEMDROP_EMAIL e SEUARMAZEMDROP_PASSWORD no .env")
+    
+    # Mudar para diretório scraper para garantir caminhos corretos
+    script_dir = Path(__file__).parent
+    os.chdir(script_dir)
     
     # Verificar se as credenciais estão configuradas
     email = os.getenv("SEUARMAZEMDROP_EMAIL") or os.getenv("EMAIL")
@@ -80,8 +85,11 @@ def main():
             with open("seuarmazemdrop_data.json", 'r', encoding='utf-8') as f:
                 products = json.load(f)
             
+            # Obter USER_ID do .env
+            user_id = os.getenv("SUPABASE_USER_ID", "default-user")
+            
             # Conectar ao Supabase
-            supa = SupabaseAPI(supabase_url, supabase_key, USER_ID)
+            supa = SupabaseAPI(supabase_url, supabase_key, user_id)
             
             # Inserir produtos
             result = supa.insert_products(products)
@@ -113,7 +121,7 @@ def main():
     print("\n📋 Step 4: Deploy no Vercel...")
     
     # Voltar para diretório raiz
-    os.chdir("..")
+    os.chdir(script_dir.parent)
     
     run_command("git add -A", "Adicionar arquivos ao git")
     run_command('git commit -m "chore: update scraped data from SeuArmazemDrop"', "Commit das mudanças")
