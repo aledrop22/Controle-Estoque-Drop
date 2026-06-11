@@ -42,8 +42,10 @@ def clean_price(price_text):
 
 def clean_stock(stock_text):
     """Clean stock text and extract number"""
-    # Extract number from text like "300 pcs"
-    match = re.search(r'\d+', stock_text)
+    # Remove separadores de milhar (pontos e vírgulas) antes de extrair
+    cleaned_text = stock_text.replace('.', '').replace(',', '')
+    # Extract number from text like "300 pcs" or "3.120 pcs" or "3,120 pcs"
+    match = re.search(r'\d+', cleaned_text)
     if match:
         return int(match.group())
     return 0
@@ -108,8 +110,8 @@ def scrape_products():
         return []
     
     with sync_playwright() as p:
-        # Usar headless=False para debug do login, pode ser alterado para True depois
-        browser = p.chromium.launch(headless=False)
+        # Usar headless=True para velocidade otimizada
+        browser = p.chromium.launch(headless=True)
         context = browser.new_context()
         page = context.new_page()
         
@@ -128,7 +130,7 @@ def scrape_products():
             selectors_email = ["input[name='email']", "#email", "input[type='email']", "input[placeholder*='email']", "input[placeholder*='E-mail']"]
             for selector in selectors_email:
                 try:
-                    page.wait_for_selector(selector, timeout=2000)
+                    page.wait_for_selector(selector, timeout=1500)
                     page.fill(selector, EMAIL)
                     print(f"✅ Email preenchido usando seletor: {selector}")
                     email_filled = True
@@ -148,7 +150,7 @@ def scrape_products():
             selectors_password = ["input[name='password']", "#password", "input[type='password']", "input[placeholder*='senha']", "input[placeholder*='Senha']"]
             for selector in selectors_password:
                 try:
-                    page.wait_for_selector(selector, timeout=2000)
+                    page.wait_for_selector(selector, timeout=1500)
                     page.fill(selector, PASSWORD)
                     print(f"✅ Senha preenchida usando seletor: {selector}")
                     password_filled = True
@@ -172,7 +174,7 @@ def scrape_products():
             selectors_button = ["button[type='submit']", "button:has-text('Entrar')", "button:has-text('entrar')", "button.btn-primary", "button.btn-login", "button[type='button']:has-text('Entrar')"]
             for selector in selectors_button:
                 try:
-                    page.wait_for_selector(selector, timeout=2000)
+                    page.wait_for_selector(selector, timeout=1500)
                     page.click(selector)
                     print(f"✅ Botão clicado usando seletor: {selector}")
                     button_clicked = True
@@ -190,7 +192,7 @@ def scrape_products():
             # Aguardar redirecionamento com mais tempo e verificar URL atual
             print("⏳ Aguardando redirecionamento...")
             try:
-                page.wait_for_url("**/dashboard/**", timeout=30000)
+                page.wait_for_url("**/dashboard/**", timeout=15000)
                 print("✅ Login realizado com sucesso!")
             except:
                 # Verificar se já estamos no dashboard mesmo com URL diferente
@@ -214,20 +216,20 @@ def scrape_products():
             # Fechar pop-up de aviso IMEDIATAMENTE após login (antes de navegar)
             print("🔍 Verificando pop-up de aviso...")
             try:
-                page.wait_for_timeout(500)  # Reduzido de 1000 para 500
+                page.wait_for_timeout(300)  # Otimizado para equilíbrio
                 close_button = page.locator("button.btn-close").first
-                if close_button.is_visible(timeout=1000):  # Reduzido de 2000 para 1000
+                if close_button.is_visible(timeout=1500):  # Otimizado para equilíbrio
                     close_button.click()
                     print("✅ Pop-up de aviso fechado (btn-close)")
-                    page.wait_for_timeout(300)  # Reduzido de 500 para 300
+                    page.wait_for_timeout(200)  # Otimizado para equilíbrio
             except:
                 # Tentar fechar pelo botão "Fechar"
                 try:
                     fechar_button = page.locator("button.btn-light:has-text('Fechar')").first
-                    if fechar_button.is_visible(timeout=800):  # Reduzido de 1500 para 800
+                    if fechar_button.is_visible(timeout=1500):  # Otimizado para equilíbrio
                         fechar_button.click()
                         print("✅ Pop-up de aviso fechado (botão Fechar)")
-                        page.wait_for_timeout(300)  # Reduzido de 500 para 300
+                        page.wait_for_timeout(200)  # Otimizado para equilíbrio
                 except:
                     pass  # Pop-up não encontrado, continuar
             
@@ -245,7 +247,7 @@ def scrape_products():
             print("⚙️  Configurando paginação para 100 itens...")
             try:
                 page.select_option("#perPage", "100")
-                page.wait_for_timeout(500)  # Reduzido de 1000 para 500
+                page.wait_for_timeout(300)  # Otimizado para equilíbrio
             except:
                 print("⚠️  Não foi possível configurar paginação. Continuando com padrão.")
             
@@ -318,11 +320,11 @@ def scrape_products():
                 
                 # Wait for products to load
                 try:
-                    page.wait_for_selector("a.text-dark", timeout=3000)  # Reduzido de 5000 para 3000
+                    page.wait_for_selector("a.text-dark", timeout=2000)  # Otimizado para equilíbrio
                 except:
                     print("⚠️  Seletor 'a.text-dark' não encontrado. Tentando seletor alternativo...")
                     try:
-                        page.wait_for_selector("a[href*='/product/']", timeout=3000)  # Reduzido de 5000 para 3000
+                        page.wait_for_selector("a[href*='/product/']", timeout=2000)  # Otimizado para equilíbrio
                     except:
                         print("❌ Nenhum produto encontrado na página. Verifique se o login expirou.")
                         print("💡 Execute 'python obter_cookie.py' para renovar o login.")
@@ -371,6 +373,9 @@ def scrape_products():
                                 size = extract_value(text, "Tamanho :")
                             elif "Estoque :" in text:
                                 stock = clean_stock(text)
+                                # Debug logging
+                                if stock > 0:
+                                    print(f"    📦 Estoque extraído: {stock} (texto original: '{text}')")
                         
                         product = {
                             'index': start_index + len(products) + 1,  # Ordem de raspagem (continuando dos existentes)
@@ -408,7 +413,7 @@ def scrape_products():
                         next_page = page.locator("li.page-item.active + li.page-item a").first
                         if next_page.is_visible():
                             next_page.click()
-                            page.wait_for_timeout(500)  # Reduzido de 1000 para 500
+                            page.wait_for_timeout(300)  # Otimizado para equilíbrio
                         else:
                             print(f"📄 Não há mais páginas. Parando na página {page_num}")
                             break

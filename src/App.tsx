@@ -25,6 +25,7 @@ type SortKey = 'name' | 'stock' | 'sales' | 'status';
 type SortDirection = 'asc' | 'desc';
 type StatusFilter = 'ALL' | 'LOW_CRITICAL' | 'NORMAL';
 type TimeRange = '24h' | '7d' | '15d' | '30d';
+type StockRangeFilter = 'ALL' | '0-100' | '100-500' | '500-1000' | '1000+';
 
 const App: React.FC = () => {
   const [products, setProducts] = useState<Product[]>(MOCK_DATA);
@@ -55,6 +56,7 @@ const App: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [soldRange, setSoldRange] = useState<TimeRange | null>(null);
+  const [stockRangeFilter, setStockRangeFilter] = useState<StockRangeFilter>('ALL');
 
   // Top Sellers State
   const [topSellersRange, setTopSellersRange] = useState<TimeRange>('24h');
@@ -435,6 +437,25 @@ const App: React.FC = () => {
       });
     }
 
+    // 2.2 Stock Range Filter
+    if (stockRangeFilter !== 'ALL') {
+      data = data.filter(p => {
+        const stock = p.currentStock;
+        switch (stockRangeFilter) {
+          case '0-100':
+            return stock >= 0 && stock < 100;
+          case '100-500':
+            return stock >= 100 && stock < 500;
+          case '500-1000':
+            return stock >= 500 && stock < 1000;
+          case '1000+':
+            return stock >= 1000;
+          default:
+            return true;
+        }
+      });
+    }
+
     // 3. Sorting
     data.sort((a, b) => {
       const analysisA = processedData.find(x => x.productId === a.id);
@@ -561,11 +582,19 @@ const App: React.FC = () => {
       <header className="mb-8 flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Controle de Estoque</h1>
-          {autoLoadError ? (
-            <p className="font-semibold text-red-600">Não foi possível carregar dados do Supabase.</p>
-          ) : (
-            !autoLoaded && <p className="font-semibold text-indigo-600">Carregando inventário do Supabase...</p>
-          )}
+          <div className="flex items-center gap-3 mt-1">
+            {autoLoadError ? (
+              <p className="font-semibold text-red-600">Não foi possível carregar dados do Supabase.</p>
+            ) : (
+              !autoLoaded && <p className="font-semibold text-indigo-600">Carregando inventário do Supabase...</p>
+            )}
+            {autoLoaded && latestDate && (
+              <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                <Calendar size={12} />
+                <span>Última atualização: {new Date(latestDate).toLocaleDateString('pt-BR')} às {new Date(latestDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -1033,7 +1062,7 @@ const App: React.FC = () => {
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row gap-4 justify-between">
-                <div className="flex gap-2 text-sm">
+                <div className="flex flex-wrap gap-2 text-sm">
                   {soldRange && (
                     <span className="px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold text-xs flex items-center gap-1">
                       Vendidos ({soldRange})
@@ -1056,6 +1085,38 @@ const App: React.FC = () => {
                     className={`px-3 py-1.5 rounded-full transition-colors border ${statusFilter === 'NORMAL' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-emerald-600 border-emerald-200 hover:bg-emerald-50'}`}
                   >
                     Normal
+                  </button>
+                  <div className="w-px bg-gray-300 mx-1"></div>
+                  <span className="text-xs text-gray-500 self-center">Faixa:</span>
+                  <button
+                    onClick={() => setStockRangeFilter('ALL')}
+                    className={`px-3 py-1.5 rounded-full transition-colors border text-xs ${stockRangeFilter === 'ALL' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                  >
+                    Todas
+                  </button>
+                  <button
+                    onClick={() => setStockRangeFilter('0-100')}
+                    className={`px-3 py-1.5 rounded-full transition-colors border text-xs ${stockRangeFilter === '0-100' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                  >
+                    0-100
+                  </button>
+                  <button
+                    onClick={() => setStockRangeFilter('100-500')}
+                    className={`px-3 py-1.5 rounded-full transition-colors border text-xs ${stockRangeFilter === '100-500' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                  >
+                    100-500
+                  </button>
+                  <button
+                    onClick={() => setStockRangeFilter('500-1000')}
+                    className={`px-3 py-1.5 rounded-full transition-colors border text-xs ${stockRangeFilter === '500-1000' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                  >
+                    500-1K
+                  </button>
+                  <button
+                    onClick={() => setStockRangeFilter('1000+')}
+                    className={`px-3 py-1.5 rounded-full transition-colors border text-xs ${stockRangeFilter === '1000+' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                  >
+                    1K+
                   </button>
                 </div>
                 <div className="relative w-full sm:w-64">

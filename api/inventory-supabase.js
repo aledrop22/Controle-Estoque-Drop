@@ -21,8 +21,21 @@ export default async function handler(req, res) {
     try {
         const { VITE_SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
 
+        console.log('[DEBUG] Environment check:', {
+            hasUrl: !!VITE_SUPABASE_URL,
+            hasKey: !!SUPABASE_SERVICE_KEY,
+            urlPrefix: VITE_SUPABASE_URL?.substring(0, 20) + '...'
+        });
+
         if (!VITE_SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-            return res.status(500).json({ error: 'Credenciais Supabase não configuradas' });
+            console.error('[ERROR] Missing Supabase credentials');
+            return res.status(500).json({ 
+                error: 'Credenciais Supabase não configuradas',
+                debug: {
+                    hasUrl: !!VITE_SUPABASE_URL,
+                    hasKey: !!SUPABASE_SERVICE_KEY
+                }
+            });
         }
 
         const supabase = createClient(VITE_SUPABASE_URL, SUPABASE_SERVICE_KEY);
