@@ -27,72 +27,51 @@ class SupabaseAPI:
             batch = products[i:i + batch_size]
             print(f"📦 Enviando lote {i//batch_size + 1}/{(total + batch_size - 1)//batch_size} ({len(batch)} produtos)...")
             
-            # Preparar dados
-            batch_data = []
-            for product in batch:
-                batch_data.append({
-                    'id': product.get('id'),
-                    'index_num': product.get('index'),
-                    'user_id': self.user_id,
-                    'name': product.get('name'),
-                    'stock': product.get('stock', 0),
-                    'price': product.get('price', 0),
-                    'url': product.get('url'),
-                    'image': product.get('image', ''),
-                    'color': product.get('color', ''),
-                    'size': product.get('size', ''),
-                    'updated_at': datetime.utcnow().isoformat()
-                })
-            
-            # Tentar enviar em lote
             try:
-                response = requests.post(url, headers=self.headers, json=batch_data, timeout=30)
-                
-                if response.status_code in [200, 201]:
-                    results.extend([p['id'] for p in batch])
-                    print(f"  ✅ Lote {i//batch_size + 1} enviado com sucesso")
-                else:
-                    print(f"  ❌ Erro no lote {i//batch_size + 1}: {response.status_code}")
-                    # Tentar um por um
-                    for product in batch:
-                        try:
-                            data = {
-                                'id': product.get('id'),
-                                'index_num': product.get('index'),
-                                'user_id': self.user_id,
-                                'name': product.get('name'),
-                                'stock': product.get('stock', 0),
-                                'price': product.get('price', 0),
-                                'url': product.get('url'),
-                                'image': product.get('image', ''),
-                                'color': product.get('color', ''),
-                                'size': product.get('size', ''),
-                                'updated_at': datetime.utcnow().isoformat()
-                            }
-                            
-                            # Tentar PATCH (update) primeiro
-                            patch_url = f"{url}?id=eq.{product.get('id')}"
-                            response = requests.patch(patch_url, headers=self.headers, json=data, timeout=30)
-                            
-                            if response.status_code in [200, 204]:
+                # Processar um por um para evitar conflitos de duplicidade
+                for product in batch:
+                    try:
+                        data = {
+                            'id': product.get('id'),
+                            'user_id': self.user_id,
+                            'name': product.get('name'),
+                            'sku': product.get('id'),  # Usar id como sku
+                            'stock': product.get('stock', 0),
+                            'price': product.get('price', 0),
+                            'url': product.get('url'),
+                            'image': product.get('image', ''),
+                            'color': product.get('color', ''),
+                            'size': product.get('size', '')
+                        }
+                        
+                        # Tentar PATCH (update) primeiro
+                        patch_url = f"{url}?id=eq.{product.get('id')}"
+                        response = requests.patch(patch_url, headers=self.headers, json=data, timeout=30)
+                        
+                        if response.status_code in [200, 204]:
+                            results.append(product.get('id'))
+                            print(f"  ✅ {product.get('id')}: atualizado")
+                        elif response.status_code == 404:
+                            # Produto não existe, tentar POST (insert)
+                            response = requests.post(url, headers=self.headers, json=data, timeout=30)
+                            if response.status_code in [200, 201]:
                                 results.append(product.get('id'))
+                                print(f"  ✅ {product.get('id')}: inserido")
                             else:
-                                # Se PATCH falhar, tentar POST (insert)
-                                response = requests.post(url, headers=self.headers, json=data, timeout=30)
-                                if response.status_code in [200, 201]:
-                                    results.append(product.get('id'))
-                                else:
-                                    print(f"  ❌ Erro produto {product.get('id')}: {response.status_code}")
-                        except Exception as e:
-                            print(f"  ❌ Erro produto {product.get('id')}: {e}")
-                    
+                                print(f"  ❌ Erro produto {product.get('id')}: {response.status_code}")
+                                print(f"     {response.text}")
+                        else:
+                            print(f"  ❌ Erro produto {product.get('id')}: {response.status_code}")
+                            print(f"     {response.text}")
+                    except Exception as e:
+                        print(f"  ❌ Erro produto {product.get('id')}: {e}")
             except Exception as e:
                 print(f"  ❌ Erro no lote {i//batch_size + 1}: {e}")
         
         return results
 
     def insert_inventory_history(self, history_data):
-        """Insert inventory history records using batch operations"""
+        """Insert or update inventory history records using upsert to avoid duplicates"""
         url = f"{self.supabase_url}/rest/v1/inventory_history"
         
         batch_size = 100  # Enviar em lotes de 100
@@ -106,24 +85,34 @@ class SupabaseAPI:
             for item in batch:
                 batch_data.append({
                     'product_id': item.get('product_id'),
-                    'date': item.get('date', datetime.utcnow().isoformat().split('T')[0]),
+                    'date': item.get('date', datetime.now().isoformat().split('T')[0]),
                     'quantity': item.get('quantity', 0),
                     'price': item.get('price', 0)
                 })
             
             try:
-                response = requests.post(url, headers=self.headers, json=batch_data, timeout=30)
+                # Usar POST com Prefer: resolution=ignore-duplicates para evitar erro 409
+                headers_with_prefer = self.headers.copy()
+                headers_with_prefer['Prefer'] = 'resolution=ignore-duplicates'
+                
+                response = requests.post(url, headers=headers_with_prefer, json=batch_data, timeout=30)
                 if response.status_code in [200, 201]:
                     print(f"  ✅ Histórico lote {i//batch_size + 1} enviado com sucesso")
+                elif response.status_code == 409:
+                    print(f"  ⏭️  Histórico lote {i//batch_size + 1}: registros já existem (ignorados)")
                 else:
                     print(f"  ❌ Erro no histórico lote {i//batch_size + 1}: {response.status_code}")
             except requests.exceptions.Timeout:
                 print(f"  ⏱️  Timeout no histórico lote {i//batch_size + 1}, tentando novamente...")
                 time.sleep(2)
                 try:
-                    response = requests.post(url, headers=self.headers, json=batch_data, timeout=60)
+                    headers_with_prefer = self.headers.copy()
+                    headers_with_prefer['Prefer'] = 'resolution=ignore-duplicates'
+                    response = requests.post(url, headers=headers_with_prefer, json=batch_data, timeout=60)
                     if response.status_code in [200, 201]:
                         print(f"  ✅ Histórico lote {i//batch_size + 1} enviado no retry")
+                    elif response.status_code == 409:
+                        print(f"  ⏭️  Histórico lote {i//batch_size + 1}: registros já existem (ignorados)")
                 except Exception as e:
                     print(f"  ❌ Falha no retry do histórico lote {i//batch_size + 1}: {e}")
             except Exception as e:

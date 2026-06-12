@@ -62,7 +62,7 @@ def main():
         
         # Inserir histórico de estoque
         print("📈 Atualizando histórico de estoque...")
-        today = datetime.utcnow().isoformat().split('T')[0]
+        today = datetime.now().isoformat().split('T')[0]
         history_data = [
             {
                 'product_id': p['id'],
