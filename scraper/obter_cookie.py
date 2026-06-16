@@ -23,8 +23,8 @@ def main():
         manual_login = False
     
     with sync_playwright() as p:
-        # Usar headless=False para debug do login, pode ser alterado para True depois
-        browser = p.chromium.launch(headless=False)
+        # Usar headless=True para funcionar no GitHub Actions (sem servidor X)
+        browser = p.chromium.launch(headless=True)
         context = browser.new_context()
         page = context.new_page()
         
