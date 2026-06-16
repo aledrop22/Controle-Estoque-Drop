@@ -468,26 +468,11 @@ def scrape_products(resume=False):
 def main():
     print("🚀 Iniciando scraper SeuArmazemDrop...")
     
-    # Limpar Supabase antes de começar (modo limpo)
-    if SUPABASE_URL and SUPABASE_SERVICE_KEY:
-        try:
-            print("\n🗑️  Limpando dados antigos do Supabase...")
-            supa = SupabaseAPI(SUPABASE_URL, SUPABASE_SERVICE_KEY, USER_ID)
-            
-            # Limpar histórico primeiro (por causa de foreign key)
-            print("   Deletando histórico de estoque...")
-            supa.clear_all_history()
-            print("   ✅ Histórico limpo")
-            
-            # Limpar produtos
-            print("   Deletando produtos...")
-            supa.clear_all_products()
-            print("   ✅ Produtos limpos")
-            
-            print("✅ Supabase limpo completamente")
-        except Exception as e:
-            print(f"❌ Erro ao limpar Supabase: {e}")
-            print("⚠️  Continuando sem limpar...")
+    # Limpar apenas o arquivo JSON antes de começar (modo limpo)
+    if os.path.exists(OUTPUT_FILE):
+        print(f"\n🗑️  Limpando arquivo JSON antigo: {OUTPUT_FILE}")
+        os.remove(OUTPUT_FILE)
+        print(f"✅ Arquivo JSON removido")
     
     # Scrape products (modo limpo por padrão - começa do zero)
     # Use resume=True para continuar de onde parou
