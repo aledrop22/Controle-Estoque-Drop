@@ -16,11 +16,11 @@ class SupabaseAPI:
         }
 
     def insert_products(self, products):
-        """Insert or update products in Supabase"""
+        """Insert or update products in Supabase usando upsert em lote"""
         url = f"{self.supabase_url}/rest/v1/products"
         
         results = []
-        batch_size = 25  # Enviar em lotes de 25
+        batch_size = 100  # Aumentado de 25 para 100 para maior velocidade
         total = len(products)
         
         for i in range(0, total, batch_size):
@@ -28,43 +28,33 @@ class SupabaseAPI:
             print(f"📦 Enviando lote {i//batch_size + 1}/{(total + batch_size - 1)//batch_size} ({len(batch)} produtos)...")
             
             try:
-                # Processar um por um para evitar conflitos de duplicidade
+                # Preparar dados em lote
+                batch_data = []
                 for product in batch:
-                    try:
-                        data = {
-                            'id': product.get('id'),
-                            'user_id': self.user_id,
-                            'name': product.get('name'),
-                            'sku': product.get('id'),  # Usar id como sku
-                            'stock': product.get('stock', 0),
-                            'price': product.get('price', 0),
-                            'url': product.get('url'),
-                            'image': product.get('image', ''),
-                            'color': product.get('color', ''),
-                            'size': product.get('size', '')
-                        }
-                        
-                        # Tentar PATCH (update) primeiro
-                        patch_url = f"{url}?id=eq.{product.get('id')}"
-                        response = requests.patch(patch_url, headers=self.headers, json=data, timeout=30)
-                        
-                        if response.status_code in [200, 204]:
-                            results.append(product.get('id'))
-                            print(f"  ✅ {product.get('id')}: atualizado")
-                        elif response.status_code == 404:
-                            # Produto não existe, tentar POST (insert)
-                            response = requests.post(url, headers=self.headers, json=data, timeout=30)
-                            if response.status_code in [200, 201]:
-                                results.append(product.get('id'))
-                                print(f"  ✅ {product.get('id')}: inserido")
-                            else:
-                                print(f"  ❌ Erro produto {product.get('id')}: {response.status_code}")
-                                print(f"     {response.text}")
-                        else:
-                            print(f"  ❌ Erro produto {product.get('id')}: {response.status_code}")
-                            print(f"     {response.text}")
-                    except Exception as e:
-                        print(f"  ❌ Erro produto {product.get('id')}: {e}")
+                    batch_data.append({
+                        'id': product.get('id'),
+                        'user_id': self.user_id,
+                        'name': product.get('name'),
+                        'sku': product.get('id'),
+                        'stock': product.get('stock', 0),
+                        'price': product.get('price', 0),
+                        'url': product.get('url'),
+                        'image': product.get('image', ''),
+                        'color': product.get('color', ''),
+                        'size': product.get('size', '')
+                    })
+                
+                # Usar POST com Prefer: resolution=merge-duplicates para upsert rápido
+                headers_with_prefer = self.headers.copy()
+                headers_with_prefer['Prefer'] = 'resolution=merge-duplicates'
+                
+                response = requests.post(url, headers=headers_with_prefer, json=batch_data, timeout=60)
+                if response.status_code in [200, 201]:
+                    results.extend([p.get('id') for p in batch])
+                    print(f"  ✅ Lote {i//batch_size + 1} enviado ({len(batch)} produtos)")
+                else:
+                    print(f"  ❌ Erro no lote {i//batch_size + 1}: {response.status_code}")
+                    print(f"     {response.text}")
             except Exception as e:
                 print(f"  ❌ Erro no lote {i//batch_size + 1}: {e}")
         
@@ -128,3 +118,15 @@ class SupabaseAPI:
             'error_message': error_message
         }
         requests.post(log_url, headers=self.headers, json=data)
+
+    def clear_all_products(self):
+        """Delete all products from Supabase"""
+        url = f"{self.supabase_url}/rest/v1/products"
+        response = requests.delete(url, headers=self.headers, timeout=30)
+        return response.status_code in [200, 204]
+
+    def clear_all_history(self):
+        """Delete all inventory history from Supabase"""
+        url = f"{self.supabase_url}/rest/v1/inventory_history"
+        response = requests.delete(url, headers=self.headers, timeout=30)
+        return response.status_code in [200, 204]

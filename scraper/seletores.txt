@@ -12,9 +12,13 @@ descricao
 <a href="https://app.seuarmazemdrop.com.br/dashboard/product/create/48829" class="text-dark">(SAD14123) Prata - Cortina Franja Metálica 1x2m Painel Decoração Festa Fundo Fotográfico Cenário</a>
 
 preco
-<div class="product-price-tag">
-    R$ 5,00
-</div>
+
+<div class="col-auto">
+                                    <div class="product-price-tag">
+                                        R$ 28,00
+                                    </div>
+                                </div>
+
 
 cor
 <h5 class="m-0"> <span class="text-muted"> Cor : Prata</span></h5>
@@ -24,6 +28,7 @@ tamanho
 
 estoque
 <h5 class="m-0"> <span class="text-muted"> Estoque : 300 pcs</span></h5>
+
 
 proxima pagina
 <li class="page-item active" aria-current="page"><span class="page-link">1</span></li>

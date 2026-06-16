@@ -359,32 +359,56 @@ def scrape_products(resume=False):
                         # Get parent card to extract other data
                         card = link.locator("xpath=ancestor::div[contains(@class, 'card')]").first
                         
-                        # Extract image
-                        image_elem = card.locator("img[alt='product-pic']").first
-                        image = image_elem.get_attribute("src") if image_elem.is_visible() else ""
+                        # Extract image - usar seletor mais específico
+                        image = ""
+                        try:
+                            image_elem = card.locator("img").first
+                            if image_elem.is_visible():
+                                image = image_elem.get_attribute("src") or ""
+                        except:
+                            image = ""
                         
-                        # Extract price
-                        price_elem = card.locator("div.product-price-tag").first
-                        price_text = price_elem.inner_text().strip() if price_elem.is_visible() else "R$ 0,00"
-                        price = clean_price(price_text)
+                        # Extract price - usar seletor mais específico
+                        price = 0.0
+                        try:
+                            price_elem = card.locator(".product-price-tag").first
+                            if price_elem.is_visible():
+                                price_text = price_elem.inner_text().strip()
+                                price = clean_price(price_text)
+                        except:
+                            price = 0.0
                         
-                        # Extract color, size, stock from h5 elements
-                        h5_elements = card.locator("h5.m-0 span.text-muted").all()
+                        # Extract color, size, stock - usar seletores específicos baseados no seletores.txt
                         color = ""
                         size = ""
                         stock = 0
                         
-                        for h5 in h5_elements:
-                            text = h5.inner_text().strip()
-                            if "Cor :" in text:
-                                color = extract_value(text, "Cor :")
-                            elif "Tamanho :" in text:
-                                size = extract_value(text, "Tamanho :")
-                            elif "Estoque :" in text:
-                                stock = clean_stock(text)
-                                # Debug logging
-                                if stock > 0:
-                                    print(f"    📦 Estoque extraído: {stock} (texto original: '{text}')")
+                        try:
+                            # Extrair cor
+                            color_elem = card.locator("h5:has-text('Cor :') span.text-muted").first
+                            if color_elem.is_visible():
+                                color_text = color_elem.inner_text().strip()
+                                color = extract_value(color_text, "Cor :")
+                        except:
+                            color = ""
+                        
+                        try:
+                            # Extrair tamanho
+                            size_elem = card.locator("h5:has-text('Tamanho :') span.text-muted").first
+                            if size_elem.is_visible():
+                                size_text = size_elem.inner_text().strip()
+                                size = extract_value(size_text, "Tamanho :")
+                        except:
+                            size = ""
+                        
+                        try:
+                            # Extrair estoque
+                            stock_elem = card.locator("h5:has-text('Estoque :') span.text-muted").first
+                            if stock_elem.is_visible():
+                                stock_text = stock_elem.inner_text().strip()
+                                stock = clean_stock(stock_text)
+                        except:
+                            stock = 0
                         
                         product = {
                             'index': len(products) + 1,  # Index sequencial baseado nos produtos coletados
@@ -392,7 +416,7 @@ def scrape_products(resume=False):
                             'name': description,
                             'stock': stock,
                             'price': price,
-                            'url': f"{BASE_URL}{product_url}",
+                            'url': product_url if product_url.startswith('http') else f"{BASE_URL}{product_url}",
                             'image': image,
                             'color': color,
                             'size': size
@@ -444,6 +468,27 @@ def scrape_products(resume=False):
 def main():
     print("🚀 Iniciando scraper SeuArmazemDrop...")
     
+    # Limpar Supabase antes de começar (modo limpo)
+    if SUPABASE_URL and SUPABASE_SERVICE_KEY:
+        try:
+            print("\n🗑️  Limpando dados antigos do Supabase...")
+            supa = SupabaseAPI(SUPABASE_URL, SUPABASE_SERVICE_KEY, USER_ID)
+            
+            # Limpar histórico primeiro (por causa de foreign key)
+            print("   Deletando histórico de estoque...")
+            supa.clear_all_history()
+            print("   ✅ Histórico limpo")
+            
+            # Limpar produtos
+            print("   Deletando produtos...")
+            supa.clear_all_products()
+            print("   ✅ Produtos limpos")
+            
+            print("✅ Supabase limpo completamente")
+        except Exception as e:
+            print(f"❌ Erro ao limpar Supabase: {e}")
+            print("⚠️  Continuando sem limpar...")
+    
     # Scrape products (modo limpo por padrão - começa do zero)
     # Use resume=True para continuar de onde parou
     products = scrape_products(resume=False)
@@ -459,7 +504,7 @@ def main():
             print(f"✅ {len(result)} produtos enviados para Supabase")
             
             # Insert inventory history
-            today = datetime.utcnow().isoformat().split('T')[0]
+            today = datetime.now().isoformat().split('T')[0]
             history_data = [
                 {
                     'product_id': p['id'],

@@ -42,12 +42,19 @@ def main():
     
     # Step 1: Obter cookie automaticamente
     print("\n📋 Step 1: Obtendo cookie de autenticação automaticamente...")
-    if not run_command("python obter_cookie.py", "Obter cookie de autenticação"):
+    venv_python = Path(__file__).parent.parent / ".venv" / "Scripts" / "python.exe"
+    if not run_command(str(venv_python) + " obter_cookie.py", "Obter cookie de autenticação"):
         print("❌ Falha ao obter cookie. Verifique suas credenciais.")
         return
     
     # Step 2: Executar scraper
     print("\n📋 Step 2: Executando scraper...")
+    
+    # Apagar arquivo JSON anterior para evitar duplicidade
+    json_file = "seuarmazemdrop_data.json"
+    if os.path.exists(json_file):
+        os.remove(json_file)
+        print(f"🗑️  Arquivo {json_file} apagado para evitar duplicidade")
     
     # Set environment variables for Supabase
     supabase_url = os.getenv("VITE_SUPABASE_URL", "")
@@ -58,7 +65,7 @@ def main():
     env["SUPABASE_SERVICE_KEY"] = supabase_key
     
     result = subprocess.run(
-        ["python", "scrape_seuarmazemdrop.py"],
+        [str(venv_python), "scrape_seuarmazemdrop.py"],
         env=env,
         capture_output=False
     )
